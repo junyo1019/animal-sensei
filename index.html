@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#EEF5EC"><link rel="apple-touch-icon" href="icon.png"><style>:root{color-scheme:light}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Japanese Quest</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800&family=Klee+One:wght@600&display=swap">
+<style>
+/* Layout: one-screen practice board. Left = the model character and the coach's bubble, right = the writing square. 46-character map below. */
+:root{
+  --bg:#EEF5EC; --paper:#FFFFFF; --ink:#1F2A33; --muted:#6B7F74; --line:#CFDDD0;
+  --sun:#F7B500; --sun-ink:#4A3300; --sea:#3A9D5D; --ok:#2E9E6B; --warn:#E8733C;
+  --bubble:#FFF6D6; --guide:#BCCBBE;
+  --display:"Fredoka","Nunito","Avenir Next Rounded","Arial Rounded MT Bold",sans-serif;
+  --body:"Nunito","Avenir Next",system-ui,sans-serif;
+  --model:"Klee One","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1E2D; --paper:#182B3E; --ink:#EAF2F8; --muted:#9FB3C6; --line:#2E4660;
+  --sun:#F7B500; --sun-ink:#2B1E00; --sea:#6CC58A; --ok:#4CC28E; --warn:#F08B5A;
+  --bubble:#2A3A2A; --guide:#3E5872; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0F1E2D; --paper:#182B3E; --ink:#EAF2F8; --muted:#9FB3C6; --line:#2E4660;
+  --sun:#F7B500; --sun-ink:#2B1E00; --sea:#6CC58A; --ok:#4CC28E; --warn:#F08B5A;
+  --bubble:#2A3A2A; --guide:#3E5872; color-scheme:dark }
+
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-weight:800;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:12px 24px;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-family:var(--display);font-size:24px;margin:0;font-weight:700;letter-spacing:.02em}
+.brand small{display:block;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em}
+.who{display:flex;gap:6px;align-items:center;background:var(--paper);border-radius:999px;padding:4px}
+.who button{padding:6px 14px;border-radius:999px;font-size:14px;color:var(--muted)}
+.who button[aria-pressed="true"]{background:var(--sun);color:var(--sun-ink)}
+.who input{font:inherit;font-size:14px;width:6em;border:0;background:transparent;color:var(--ink);text-align:center}
+.stars{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.stars b{font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+
+.board{display:grid;grid-template-columns:minmax(260px,1fr) minmax(300px,min(52vh,520px));gap:16px;align-items:start}
+@media (max-width:720px){.board{grid-template-columns:1fr}}
+
+.model{background:var(--paper);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.model .ch{font-family:var(--model);font-weight:600;font-size:clamp(96px,16vw,150px);line-height:1;text-align:center;color:var(--ink)}
+.model .say{text-align:center;font-size:15px;color:var(--muted);line-height:1.4}
+.model .say b{color:var(--sea);font-size:18px}
+.model .say .jp{font-family:var(--model);font-size:20px;color:var(--ink)}
+.steps{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-family:var(--display);font-weight:600}
+.steps .step{padding:6px 12px;border-radius:999px;background:var(--bg);color:var(--muted)}
+.steps .step.on{background:var(--ink);color:var(--paper)}
+.steps .step.done{background:var(--ok);color:#fff}
+.steps .arrow{color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.chip{padding:10px 16px;border-radius:999px;background:var(--bg);font-size:15px;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--sea);color:#fff}
+.nav{display:flex;justify-content:space-between;gap:8px}
+.nav button{padding:10px 14px;border-radius:14px;background:var(--bg);font-size:15px}
+
+.bubble{position:relative;background:var(--bubble);border-radius:18px;padding:12px 14px;font-size:16px;line-height:1.45;min-height:58px;font-weight:600}
+.bubble::before{content:"";position:absolute;left:28px;top:-9px;border:9px solid transparent;border-top:0;border-bottom-color:var(--bubble)}
+.bubble .big{font-family:var(--display);font-size:30px;line-height:1.1;display:block;margin-bottom:4px;font-weight:700}
+.bubble .big.ok{color:var(--ok)} .bubble .big.mid{color:var(--sun)} .bubble .big.low{color:var(--warn)}
+.coach{display:flex;gap:10px;align-items:flex-start}
+.coach svg{flex:0 0 56px;width:56px;height:64px}
+
+.pad{background:var(--paper);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.sq{position:relative;width:100%;aspect-ratio:1/1;max-width:100%;border-radius:16px;overflow:hidden;background:#FFFEF9;touch-action:none;border:2px solid var(--line)}
+.sq canvas{position:absolute;inset:0;width:100%;height:100%}
+.tools{display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px}
+.tools button{padding:14px 8px;border-radius:14px;background:var(--bg);font-size:16px}
+.tools .go{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-size:19px;font-weight:700}
+.tools button:disabled{opacity:.45;cursor:default}
+.ai{padding:12px;border-radius:14px;background:var(--bg);font-size:15px;text-align:center;color:var(--sea)}
+.ai:disabled{color:var(--muted)}
+.hint{font-size:12px;color:var(--muted);font-weight:600;text-align:center}
+
+.grid{margin-top:16px;background:var(--paper);border-radius:22px;padding:14px}
+.grid h2{font-family:var(--display);font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.cells{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+.cells button{aspect-ratio:1/1;border-radius:10px;background:var(--bg);font-family:var(--model);font-size:clamp(16px,3.2vw,26px);font-weight:600;position:relative}
+.cells button[aria-current="true"]{outline:3px solid var(--sea)}
+.cells button.done{background:var(--sun);color:var(--sun-ink)}
+.cells button.done::after{content:"★";position:absolute;right:3px;top:0;font-size:10px;font-family:var(--body)}
+.cells .gap{visibility:hidden}
+
+/* ---- tabs and Read tab */
+.safari{background:var(--paper);border-radius:18px;padding:14px 16px;margin:0 auto 12px;max-width:560px;font-size:14px;font-weight:600}
+.safari p{margin:0 0 8px}
+.safari a.chip{text-decoration:none}
+.safari input{width:100%;font:inherit;font-size:13px;padding:8px 10px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);margin-top:8px}
+.tabs{display:flex;gap:6px;background:var(--paper);border-radius:999px;padding:4px;width:max-content;margin:0 auto 12px}
+.tabs button{padding:8px 18px;border-radius:999px;font-family:var(--display);font-size:16px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+.rtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.pick{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pick label{font-size:13px;color:var(--muted)}
+.pick select{font:inherit;font-size:15px;padding:8px 10px;border-radius:12px;border:2px solid var(--line);background:var(--paper);color:var(--ink);max-width:60vw}
+.plan{font-family:var(--display);font-size:14px;background:var(--sun);color:var(--sun-ink);padding:6px 12px;border-radius:999px}
+.quiz,.reader,.qs,.write,.addbox{background:var(--paper);border-radius:22px;padding:16px;margin-bottom:12px}
+.quiz h2,.qs h2,.write h2,.addbox h2{font-family:var(--display);font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.06em;font-weight:600}
+.qword{font-family:var(--model);font-size:56px;text-align:center;line-height:1.2}
+.qread{text-align:center;font-size:22px;color:var(--sea);margin:4px 0 8px}
+.chip.ok{background:var(--ok);color:#fff}.chip.no{background:var(--bg)}
+.chip.go{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-weight:600}
+.rtools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.reader{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px;align-items:start}
+@media (max-width:820px){.reader{grid-template-columns:1fr}}
+.rmain{min-width:0}
+.rside{display:flex;flex-direction:column;gap:10px;position:sticky;top:8px}
+.rside .coach{align-items:flex-start}
+.rside .coach svg{flex:0 0 64px;width:64px;height:72px}
+.rside .rtools .chip{flex:1 1 45%;justify-content:center}
+.progress{height:10px;border-radius:999px;background:var(--bg);overflow:hidden;margin-bottom:12px}
+.progress .bar{height:100%;width:0;background:linear-gradient(90deg,var(--sea),#A6CB6A);transition:width .3s}
+.mic{font-size:12px;color:var(--muted);min-height:16px;margin-bottom:6px}
+.dict{background:var(--bubble);border-radius:16px;padding:10px 12px}
+.dictRow{display:flex;gap:8px;align-items:flex-start}
+.dictIcon{font-size:22px;line-height:1}
+.dictText{font-size:13px;font-weight:600;line-height:1.4}
+/* the voice input itself is kept tiny and unreadable: the story above is where the reading shows */
+.dict textarea{height:30px;min-height:30px;margin-top:8px;padding:4px 8px;font-size:12px;line-height:22px;color:transparent;caret-color:var(--sea);background:var(--paper);border:2px dashed var(--line);resize:none;overflow:hidden;white-space:nowrap}
+.dict textarea:focus{border-color:var(--sea);outline:none}
+.dict textarea::placeholder{color:var(--muted)}
+.passage{font-family:var(--model);font-size:clamp(22px,2.6vw,32px);line-height:2.1;font-weight:600;word-break:keep-all;overflow-wrap:anywhere;max-width:34em}
+.passage .w.read{color:var(--sea);background:#E4F3E8;transition:background .25s,color .25s}
+.passage .w.miss{color:#B3261E;background:#FDE0DC;transition:background .25s,color .25s}
+.passage .w.blue{color:#1B5FB0;background:#DCEBFF;transition:background .4s,color .4s}
+.legend{font-size:13px;font-weight:800;color:var(--muted);margin:6px 0 0}
+.legend b{padding:1px 8px;border-radius:8px;margin-right:4px}
+.legend .g{background:#E4F3E8;color:var(--sea)}.legend .r{background:#FDE0DC;color:#B3261E}.legend .b{background:#DCEBFF;color:#1B5FB0}
+.passage .w.cursor{box-shadow:0 3px 0 var(--sun)}
+.passage .w{display:inline-block;padding:0 2px;border-radius:6px;position:relative;cursor:pointer}
+.passage .w.k{border-bottom:3px dotted var(--line)}
+.passage .w.k:hover{background:var(--bg)}
+.passage .w.show{background:#FFF6D6}
+.passage .w.show rt{visibility:visible}
+.passage .w.stumble{background:#FDE2D3}
+.passage .w.flash{background:#D7F0DF;animation:flash 1.2s ease-in-out 3}
+.passage .w.now{background:#D7F0DF}
+.passage ruby rt{font-family:var(--body);font-size:12px;color:var(--sea);visibility:hidden;font-weight:800}
+.passage .s{display:inline}
+@keyframes flash{50%{background:#8FD3A6}}
+.helper{background:var(--bubble);border-radius:16px;padding:12px 14px;margin-top:10px;font-size:16px;line-height:1.5;font-weight:600}
+.helper .big{font-family:var(--model);font-size:34px;display:block}
+.helper .opts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.helper .opts button{padding:10px 16px;border-radius:14px;background:var(--paper);font-size:20px;font-family:var(--model)}
+.helper .wait{font-family:var(--display);font-size:28px;color:var(--warn)}
+.result{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--bg);font-size:15px;line-height:1.5}
+.result b{font-family:var(--display);font-size:22px}
+.qs .q{padding:10px 0;border-top:1px solid var(--line)}
+.qs .q:first-child{border-top:0}
+.qs .qt{font-family:var(--model);font-size:18px;margin-bottom:6px}
+.qs .opts{display:flex;gap:8px;flex-wrap:wrap}
+.qs .opts button{padding:10px 14px;border-radius:14px;background:var(--bg);font-family:var(--model);font-size:17px}
+.qs .opts button.right{background:var(--ok);color:#fff}.qs .opts button.wrong{background:#FDE2D3}
+.qs .why{margin-top:6px;font-size:14px;color:var(--muted);font-weight:600}
+.write p{font-family:var(--model);font-size:18px;margin:0 0 8px}
+textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding:10px;border-radius:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;min-width:0}
+.report{background:var(--paper);border-radius:22px;padding:12px 16px;margin-bottom:12px;font-size:14px}
+.report summary{cursor:pointer;font-family:var(--display);color:var(--muted)}
+.report table{border-collapse:collapse;width:100%;margin-top:8px;font-variant-numeric:tabular-nums}
+.report th,.report td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);font-weight:600}
+.report .gave{font-weight:900;color:var(--warn)}
+.pop{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:20}
+.pop span{font-size:120px;transform:scale(.2);opacity:0}
+.pop.on span{animation:pop .9s ease-out forwards}
+@keyframes pop{0%{transform:scale(.2);opacity:0}40%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pop.on span{animation:none;opacity:1}}
+</style>
+
+<div class="top">
+  <div class="brand">
+    <svg width="44" height="50" aria-hidden="true" viewBox="0 0 64 72"><circle cx="15" cy="14" r="8" fill="#7BA23F"/><circle cx="49" cy="14" r="8" fill="#7BA23F"/><ellipse cx="32" cy="58" rx="19" ry="13" fill="#fff" stroke="#5B7F2E" stroke-width="1.5"/><ellipse cx="17" cy="60" rx="6" ry="8" fill="#7BA23F" transform="rotate(20 17 60)"/><ellipse cx="47" cy="60" rx="6" ry="8" fill="#7BA23F" transform="rotate(-20 47 60)"/><circle cx="32" cy="30" r="24" fill="#fff" stroke="#5B7F2E" stroke-width="1.5"/><path d="M30 7c-1-4 1-6 4-7-1 3 0 5 2 6" fill="#A6CB6A" stroke="#5B7F2E" stroke-width="1"/><ellipse cx="20" cy="34" rx="7.5" ry="8.5" fill="#7BA23F" transform="rotate(38 20 34)"/><ellipse cx="44" cy="34" rx="7.5" ry="8.5" fill="#7BA23F" transform="rotate(-38 44 34)"/><ellipse cx="21.5" cy="36" rx="3.6" ry="3.2" fill="#fff"/><ellipse cx="42.5" cy="36" rx="3.6" ry="3.2" fill="#fff"/><path d="M17.6 35.2q3.9-3.4 7.8 0z" fill="#7BA23F"/><path d="M38.6 35.2q3.9-3.4 7.8 0z" fill="#7BA23F"/><circle cx="21.8" cy="37" r="1.7" fill="#2B3A2B"/><circle cx="42.2" cy="37" r="1.7" fill="#2B3A2B"/><circle cx="22.4" cy="36.4" r=".6" fill="#fff"/><circle cx="42.8" cy="36.4" r=".6" fill="#fff"/><ellipse cx="32" cy="43.5" rx="3.3" ry="2.2" fill="#5B7F2E"/><path d="M27.5 47q4.5 4 9 0" stroke="#5B7F2E" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="13.5" cy="43" r="3.2" fill="#FFB3A7" opacity=".85"/><circle cx="50.5" cy="43" r="3.2" fill="#FFB3A7" opacity=".85"/></svg>
+    <div><h1>Japanese Quest</h1><small>READ AND WRITE JAPANESE</small></div>
+  </div>
+  <div class="who" id="who" role="group" aria-label="Who is playing?"></div>
+  <div class="stars">⭐ <b id="starCount">0</b> stars</div>
+  <button class="chip" id="openSafari" type="button">🧭 Open in Safari</button>
+</div>
+<div class="safari" id="safariBox" hidden>
+  <p>Tap the link to open this app in Safari, then tap Share → <b>Add to Home Screen</b>. Mic and voice work best there.</p>
+  <div class="row">
+    <a class="chip go" id="appLink" href="https://claude.ai/artifact/VZC2dzaNVshSMRW4xoxWKE" target="_blank" rel="noopener">Open Japanese Quest ↗</a>
+    <button class="chip" id="copyLink" type="button">Copy link</button>
+  </div>
+  <input id="linkText" type="text" readonly value="https://claude.ai/artifact/VZC2dzaNVshSMRW4xoxWKE" aria-label="App link">
+  <p class="hint">If the link only opens inside this app: copy it, open Safari, and paste it into the address bar. You need to be signed in to claude.ai in Safari.</p>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" id="tabRead" aria-selected="true" type="button">📖 Read</button>
+  <button role="tab" id="tabWrite" aria-selected="false" type="button">✏️ Write</button>
+</nav>
+
+<div id="writeTab" hidden>
+<div class="board">
+  <section class="model">
+    <div class="ch" id="ch" lang="ja">あ</div>
+    <div class="say" id="say"></div>
+    <div class="steps" id="steps">
+      <span class="step on" id="s1">1 · Trace it</span><span class="arrow">→</span><span class="step" id="s2">2 · Write it yourself</span>
+    </div>
+    <div class="row">
+      <button class="chip" id="speak" type="button">🔊 Hear it</button>
+      <button class="chip" id="guideBtn" type="button" aria-pressed="true">👀 Example on</button>
+    </div>
+    <div class="nav">
+      <button id="prev" type="button">← Back</button>
+      <button id="next" type="button">Next →</button>
+    </div>
+    <div class="coach">
+      <svg aria-hidden="true" viewBox="0 0 64 72"><circle cx="15" cy="14" r="8" fill="#7BA23F"/><circle cx="49" cy="14" r="8" fill="#7BA23F"/><ellipse cx="32" cy="58" rx="19" ry="13" fill="#fff" stroke="#5B7F2E" stroke-width="1.5"/><ellipse cx="17" cy="60" rx="6" ry="8" fill="#7BA23F" transform="rotate(20 17 60)"/><ellipse cx="47" cy="60" rx="6" ry="8" fill="#7BA23F" transform="rotate(-20 47 60)"/><circle cx="32" cy="30" r="24" fill="#fff" stroke="#5B7F2E" stroke-width="1.5"/><path d="M30 7c-1-4 1-6 4-7-1 3 0 5 2 6" fill="#A6CB6A" stroke="#5B7F2E" stroke-width="1"/><ellipse cx="20" cy="34" rx="7.5" ry="8.5" fill="#7BA23F" transform="rotate(38 20 34)"/><ellipse cx="44" cy="34" rx="7.5" ry="8.5" fill="#7BA23F" transform="rotate(-38 44 34)"/><ellipse cx="21.5" cy="36" rx="3.6" ry="3.2" fill="#fff"/><ellipse cx="42.5" cy="36" rx="3.6" ry="3.2" fill="#fff"/><path d="M17.6 35.2q3.9-3.4 7.8 0z" fill="#7BA23F"/><path d="M38.6 35.2q3.9-3.4 7.8 0z" fill="#7BA23F"/><circle cx="21.8" cy="37" r="1.7" fill="#2B3A2B"/><circle cx="42.2" cy="37" r="1.7" fill="#2B3A2B"/><circle cx="22.4" cy="36.4" r=".6" fill="#fff"/><circle cx="42.8" cy="36.4" r=".6" fill="#fff"/><ellipse cx="32" cy="43.5" rx="3.3" ry="2.2" fill="#5B7F2E"/><path d="M27.5 47q4.5 4 9 0" stroke="#5B7F2E" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="13.5" cy="43" r="3.2" fill="#FFB3A7" opacity=".85"/><circle cx="50.5" cy="43" r="3.2" fill="#FFB3A7" opacity=".85"/></svg>
+      <div class="bubble" id="bubble">Hi! I'm Macha the panda. Trace the light gray letter with your pencil, then tap Check!</div>
+    </div>
+  </section>
+
+  <section class="pad">
+    <div class="sq" id="sq">
+      <canvas id="guide" aria-hidden="true"></canvas>
+      <canvas id="draw" aria-label="Write here with your pencil"></canvas>
+    </div>
+    <div class="tools">
+      <button id="undo" type="button">Undo</button>
+      <button id="clear" type="button">Clear</button>
+      <button id="check" type="button" class="go">Check!</button>
+    </div>
+    <button id="ai" type="button" class="ai" hidden>🤖 Ask Macha to look</button>
+    <div class="hint" id="hint">Works best with an Apple Pencil</div>
+  </section>
+</div>
+
+<section class="grid">
+  <h2>YOUR KANA MAP · 46 letters</h2>
+  <div class="cells" id="cells"></div>
+</section>
+
+</div><!-- /writeTab -->
+
+<div id="readTab">
+  <div class="rtop">
+    <div class="pick">
+      <label for="passageSel">Story</label>
+      <select id="passageSel"></select>
+      <button id="addPassage" type="button" class="chip">＋ Add a story</button>
+    </div>
+    <div class="plan" id="plan"></div>
+  </div>
+
+  <section class="quiz" id="quiz" hidden>
+    <h2>Yesterday's words · say it out loud</h2>
+    <div class="qword" id="qword"></div>
+    <div class="qread" id="qread" hidden></div>
+    <div class="row">
+      <button class="chip" id="qShow" type="button">👀 Show the reading</button>
+      <button class="chip ok" id="qYes" type="button" hidden>✅ I got it</button>
+      <button class="chip no" id="qNo" type="button" hidden>🙈 Not yet</button>
+    </div>
+    <div class="hint" id="qLeft"></div>
+  </section>
+
+  <section class="reader">
+    <div class="rmain">
+      <div class="progress"><div class="bar" id="rbar"></div></div>
+      <div class="passage" id="passage" lang="ja"></div>
+    </div>
+    <aside class="rside">
+      <div class="coach"><svg id="machaRead" aria-hidden="true"></svg><div class="bubble" id="rbubble">Tap any word you can't read. I'll help!</div></div>
+      <div class="rtools">
+        <button class="chip" id="shadow" type="button">🐼 Macha reads first</button>
+        <button class="chip go" id="startRead" type="button">🎤 Start reading</button>
+        <button class="chip go" id="doneRead" type="button" hidden>✅ Done</button>
+        <button class="chip" id="parentMode" type="button" aria-pressed="false">👂 Grown-up is listening</button>
+      </div>
+      <div class="legend" id="legend"><b class="g">Green</b>read it! <b class="r">Red</b>tap it, I'll help <b class="b">Blue</b>perfect run</div>
+      <div class="mic" id="micStatus"></div>
+      <div class="dict" id="dictBox" hidden>
+        <div class="dictRow">
+          <span class="dictIcon">🎤</span>
+          <div class="dictText" id="dictText">Tap the <b>mic key</b> on the keyboard (keyboard set to <b>日本語</b>, hold 🌐 to switch) and read the story. The words above turn green as you read.</div>
+        </div>
+        <textarea id="dictIn" rows="1" lang="ja" aria-label="Voice input" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+      </div>
+      <div class="helper" id="helper" hidden></div>
+      <div class="result" id="result" hidden></div>
+    </aside>
+  </section>
+
+  <section class="qs" id="qs" hidden>
+    <h2>Questions</h2>
+    <div id="qlist"></div>
+  </section>
+
+  <section class="write" id="writeQ" hidden>
+    <h2>Write about it</h2>
+    <p id="wprompt"></p>
+    <textarea id="wans" rows="3" placeholder="Say it in Japanese, then type it here (you can use the mic on the keyboard)"></textarea>
+    <div class="row"><button class="chip go" id="wcheck" type="button">Ask Macha</button></div>
+    <div class="bubble" id="wfeedback" hidden></div>
+  </section>
+
+  <details class="report">
+    <summary>For grown-ups · report</summary>
+    <div id="report"></div>
+  </details>
+
+  <section class="addbox" id="addBox" hidden>
+    <h2>Add a story</h2>
+    <p class="hint">Paste Japanese text, or take a photo of a page. Macha adds the readings.</p>
+    <textarea id="addText" rows="4" placeholder="ここに日本語の文章を貼り付ける"></textarea>
+    <div class="row">
+      <input type="file" id="addPhoto" accept="image/*" capture="environment" hidden>
+      <button class="chip" id="addPhotoBtn" type="button">📷 Photo of a page</button>
+      <button class="chip go" id="addGo" type="button">Add with Macha</button>
+      <button class="chip" id="addCancel" type="button">Cancel</button>
+    </div>
+    <div class="hint" id="addStatus"></div>
+  </section>
+</div><!-- /readTab -->
+
+<div class="pop" id="pop" aria-hidden="true"><span>⭐️</span></div>
+
+<script>
+// ---- data: kana, stroke count, example word, romaji, English
+const KANA = [
+ ["あ",3,"あり","ari","ant"],["い",2,"いぬ","inu","dog"],["う",2,"うみ","umi","sea"],["え",2,"えび","ebi","shrimp"],["お",3,"おに","oni","ogre"],
+ ["か",3,"かさ","kasa","umbrella"],["き",4,"きつね","kitsune","fox"],["く",1,"くま","kuma","bear"],["け",3,"けむし","kemushi","caterpillar"],["こ",2,"こま","koma","spinning top"],
+ ["さ",3,"さかな","sakana","fish"],["し",1,"しか","shika","deer"],["す",2,"すいか","suika","watermelon"],["せ",3,"せみ","semi","cicada"],["そ",1,"そら","sora","sky"],
+ ["た",4,"たこ","tako","octopus"],["ち",2,"ちず","chizu","map"],["つ",1,"つき","tsuki","moon"],["て",1,"てがみ","tegami","letter"],["と",2,"とり","tori","bird"],
+ ["な",4,"なす","nasu","eggplant"],["に",3,"にじ","niji","rainbow"],["ぬ",2,"ぬいぐるみ","nuigurumi","stuffed animal"],["ね",2,"ねこ","neko","cat"],["の",1,"のり","nori","seaweed"],
+ ["は",3,"はな","hana","flower"],["ひ",1,"ひこうき","hikōki","airplane"],["ふ",4,"ふね","fune","boat"],["へ",1,"へび","hebi","snake"],["ほ",4,"ほし","hoshi","star"],
+ ["ま",3,"まめ","mame","bean"],["み",2,"みかん","mikan","orange"],["む",3,"むし","mushi","bug"],["め",2,"めがね","megane","glasses"],["も",3,"もも","momo","peach"],
+ ["や",3,"やま","yama","mountain"],null,["ゆ",2,"ゆき","yuki","snow"],null,["よ",2,"よる","yoru","night"],
+ ["ら",2,"らくだ","rakuda","camel"],["り",2,"りんご","ringo","apple"],["る",1,"るすばん","rusuban","home alone"],["れ",2,"れもん","remon","lemon"],["ろ",1,"ろうそく","rōsoku","candle"],
+ ["わ",2,"わに","wani","crocodile"],null,["を",3,"ほんを よむ","hon o yomu","read a book"],null,["ん",1,"ぱん","pan","bread"],
+];
+const LIST = KANA.filter(Boolean);
+const ROWS = []; for (let i=0;i<KANA.length;i+=5) ROWS.push(KANA.slice(i,i+5));
+
+// ---- state
+let cur = 0, guideOn = true, strokes = [], usedPen = false, live = null, step = 1;
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} } };
+let profiles = store.get("pq.profiles", [{name:"Player 1"},{name:"Player 2"}]);
+let who = store.get("pq.who", 0);
+function pdata(){ return store.get("pq.p"+who, {done:{}, stars:0}); }
+function savep(d){ store.set("pq.p"+who, d); }
+
+// ---- elements
+const $ = id => document.getElementById(id);
+const chEl=$("ch"), sayEl=$("say"), bubble=$("bubble"), guideC=$("guide"), drawC=$("draw"), sq=$("sq");
+const gctx=guideC.getContext("2d"), dctx=drawC.getContext("2d");
+
+// ---- profiles
+function renderWho(){
+  const w=$("who"); w.innerHTML="";
+  profiles.forEach((p,i)=>{
+    const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed", i===who);
+    if(i===who){ const inp=document.createElement("input"); inp.id="name"+i; inp.value=p.name; inp.setAttribute("aria-label","Your name");
+      inp.onchange=()=>{ profiles[i].name=inp.value.trim()||p.name; store.set("pq.profiles",profiles); }; b.appendChild(inp); }
+    else { b.textContent=p.name; b.onclick=()=>{ who=i; store.set("pq.who",who); renderWho(); renderGrid(); renderStars(); if (!$("readTab").hidden){ loadPassage(rstore.get("lastP", allPassages()[0].id)); showQuiz(); } }; }
+    w.appendChild(b);
+  });
+}
+function renderStars(){ $("starCount").textContent = pdata().stars; }
+
+// ---- canvas sizing
+function size(){
+  const r=sq.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,3);
+  for (const c of [guideC,drawC]){ c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr); }
+  drawGuide(); redraw();
+}
+function glyph(ctx, S, text, fill, strokeW){
+  ctx.save(); ctx.font = `600 ${S*0.78}px "Klee One", "Hiragino Mincho ProN", serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  if (strokeW){ ctx.lineWidth=strokeW; ctx.strokeStyle=fill; ctx.lineJoin="round"; ctx.strokeText(text, S/2, S*0.53); }
+  ctx.fillStyle=fill; ctx.fillText(text, S/2, S*0.53); ctx.restore();
+}
+function drawGuide(){
+  const S=guideC.width; gctx.clearRect(0,0,S,S);
+  const line=getComputedStyle(document.documentElement).getPropertyValue("--line").trim()||"#C9D8E4";
+  gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(1,S/300); gctx.setLineDash([S/60,S/60]);
+  gctx.beginPath(); gctx.moveTo(S/2,0); gctx.lineTo(S/2,S); gctx.moveTo(0,S/2); gctx.lineTo(S,S/2); gctx.stroke(); gctx.restore();
+  if (guideOn){ const g=getComputedStyle(document.documentElement).getPropertyValue("--guide").trim()||"#B9CAD9"; gctx.globalAlpha=.55; glyph(gctx,S,LIST[cur][0],g,0); gctx.globalAlpha=1; }
+}
+
+// ---- drawing (strokes stored normalized 0..1 with pressure)
+function renderStrokes(ctx, S, widthMul){
+  ctx.clearRect(0,0,S,S); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1F3550";
+  const base=S*0.045*widthMul;
+  for (const st of strokes){
+    if (st.length===1){ ctx.beginPath(); ctx.arc(st[0].x*S, st[0].y*S, base*0.5*(0.6+st[0].p*0.8), 0, Math.PI*2); ctx.fillStyle="#1F3550"; ctx.fill(); continue; }
+    for (let i=1;i<st.length;i++){
+      const a=st[i-1], b=st[i]; ctx.lineWidth = base*(0.6+((a.p+b.p)/2)*0.8);
+      ctx.beginPath(); ctx.moveTo(a.x*S,a.y*S); ctx.lineTo(b.x*S,b.y*S); ctx.stroke();
+    }
+  }
+}
+function redraw(){ renderStrokes(dctx, drawC.width, 1); }
+let drawing=null;
+function pt(e){ const r=sq.getBoundingClientRect(); const p = e.pointerType==="pen" ? (e.pressure||0.5) : 0.5;
+  return {x:(e.clientX-r.left)/r.width, y:(e.clientY-r.top)/r.height, p}; }
+drawC.addEventListener("pointerdown", e=>{
+  if (e.pointerType==="pen") usedPen=true;
+  if (e.pointerType==="touch" && usedPen) return;   // palm rejection once a pencil has been used
+  e.preventDefault(); drawC.setPointerCapture(e.pointerId);
+  drawing=[pt(e)]; strokes.push(drawing); redraw();
+});
+drawC.addEventListener("pointermove", e=>{
+  if (!drawing) return; e.preventDefault();
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of evs) drawing.push(pt(ev));
+  redraw();
+});
+const end = e=>{ if (drawing){ drawing=null; $("check").disabled=false; } };
+drawC.addEventListener("pointerup", end); drawC.addEventListener("pointercancel", end); drawC.addEventListener("pointerleave", end);
+
+$("undo").onclick=()=>{ strokes.pop(); redraw(); };
+$("clear").onclick=()=>{ strokes=[]; redraw(); say("Cleared. Try again!"); };
+function setGuide(on){ guideOn=on; $("guideBtn").setAttribute("aria-pressed",on); $("guideBtn").textContent = on?"👀 Example on":"🙈 Example off"; drawGuide(); }
+$("guideBtn").onclick=()=>setGuide(!guideOn);
+// step 1 = trace with the example, step 2 = write alone (only step 2 earns the star)
+function setStep(n){
+  step=n; $("s1").className="step"+(n===1?" on":" done"); $("s2").className="step"+(n===2?" on":"");
+  setGuide(n===1);
+}
+
+// ---- scoring: compare the drawn mask with the model glyph mask (both dilated)
+function mask(S, paint){ const c=document.createElement("canvas"); c.width=c.height=S; const x=c.getContext("2d"); paint(x,S); return x.getImageData(0,0,S,S).data; }
+function score(){
+  const S=240;
+  const ref  = mask(S,(x)=>glyph(x,S,LIST[cur][0],"#000",0));
+  const refD = mask(S,(x)=>glyph(x,S,LIST[cur][0],"#000",S*0.10));
+  const dr   = mask(S,(x)=>renderStrokes(x,S,1));
+  const drD  = mask(S,(x)=>renderStrokes(x,S,3));
+  let nRef=0,nDr=0,cov=0,prec=0;
+  for (let i=3;i<ref.length;i+=4){
+    const r=ref[i]>100, rd=refD[i]>100, d=dr[i]>100, dd=drD[i]>100;
+    if (r){ nRef++; if (dd) cov++; }
+    if (d){ nDr++; if (rd) prec++; }
+  }
+  if (nDr < nRef*0.08) return {empty:true};
+  let s = 100*(0.55*cov/nRef + 0.45*prec/nDr);
+  const diff=Math.abs(strokes.length-LIST[cur][1]); s -= Math.min(25, diff*10);
+  return {score:Math.max(0,Math.round(s)), cov:cov/nRef, prec:prec/nDr, strokeDiff:strokes.length-LIST[cur][1]};
+}
+$("check").onclick=()=>{
+  const r=score(); const k=LIST[cur];
+  if (r.empty){ say("Nothing here yet. Write the letter with your pencil, then tap Check!"); return; }
+  let mark, cls, msg;
+  if (r.score>=75){ mark="Awesome!"; cls="ok"; msg="That looks great."; }
+  else if (r.score>=55){ mark="Nice!"; cls="mid"; msg = r.cov<0.7 ? "Try writing it a little bigger." : "Try to match the shape a bit more."; }
+  else { mark="Almost!"; cls="low"; msg="Go slowly and follow the shape."; }
+  const strokesWord = n => n===1 ? "1 stroke" : n+" strokes";
+  if (r.strokeDiff>0) msg += ` ${k[0]} is written with ${strokesWord(k[1])}, you used ${strokesWord(strokes.length)}.`;
+  else if (r.strokeDiff<0) msg += ` ${k[0]} needs ${strokesWord(k[1])}.`;
+  const pass = r.score>=75 || (step===1 && r.score>=55);
+  if (step===1 && pass){
+    bubble.innerHTML = `<span class="big ok">Traced!</span>Now the example is gone. Write ${k[0]} by yourself from memory, then tap Check!`;
+    cheer("Nice tracing! Now write it by yourself.");
+    strokes=[]; setStep(2); redraw(); return;
+  }
+  if (step===2 && r.score<55) msg += " You can turn the example back on if you need a peek.";
+  bubble.innerHTML = `<span class="big ${cls}">${mark}</span>${esc(msg)}`;
+  cheer(mark + " " + msg);
+  if (step===2 && r.score>=75 && !guideOn){
+    const d=pdata(); d.done[k[0]]=true; d.stars=(d.stars||0)+1; savep(d);
+    renderStars(); renderGrid(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on");
+    $("s2").className="step done";
+    bubble.innerHTML = `<span class="big ok">You did it!</span>You wrote ${k[0]} all by yourself. ⭐ Star earned. Tap Next to keep going.`;
+    cheer("You did it! You earned a star!");
+  } else if (step===2 && r.score>=75 && guideOn){
+    bubble.innerHTML = `<span class="big mid">Looking good!</span>Stars are for writing without the example. Turn it off and try once more.`;
+    cheer("Looking good! Now try it without the example.");
+  }
+};
+
+// ---- navigation
+function esc(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function say(t){ bubble.textContent=t; }
+function show(i){
+  cur=(i+LIST.length)%LIST.length; const k=LIST[cur];
+  chEl.textContent=k[0];
+  const jp = k[2].split("").map(c=>c===k[0]?`<b>${c}</b>`:esc(c)).join("");
+  sayEl.innerHTML = `<span class="jp">${jp}</span><br>${esc(k[3])} · ${esc(k[4])}`;
+  strokes=[]; setStep(1); redraw(); renderGrid();
+  say(`This is ${k[0]}, it sounds like "${romajiOf(k)}". Trace the gray letter, then tap Check!`);
+}
+function romajiOf(k){ const map={"あ":"a","い":"i","う":"u","え":"e","お":"o","か":"ka","き":"ki","く":"ku","け":"ke","こ":"ko","さ":"sa","し":"shi","す":"su","せ":"se","そ":"so","た":"ta","ち":"chi","つ":"tsu","て":"te","と":"to","な":"na","に":"ni","ぬ":"nu","ね":"ne","の":"no","は":"ha","ひ":"hi","ふ":"fu","へ":"he","ほ":"ho","ま":"ma","み":"mi","む":"mu","め":"me","も":"mo","や":"ya","ゆ":"yu","よ":"yo","ら":"ra","り":"ri","る":"ru","れ":"re","ろ":"ro","わ":"wa","を":"wo","ん":"n"}; return map[k[0]]||""; }
+$("prev").onclick=()=>show(cur-1); $("next").onclick=()=>show(cur+1);
+function renderGrid(){
+  const g=$("cells"); g.innerHTML=""; const done=pdata().done;
+  for (let r=0;r<5;r++) for (let c=ROWS.length-1;c>=0;c--){
+    const k=ROWS[c][r]; const b=document.createElement("button"); b.type="button";
+    if (!k){ b.className="gap"; b.tabIndex=-1; b.textContent="・"; }
+    else { b.textContent=k[0]; b.lang="ja"; b.title=romajiOf(k); if (done[k[0]]) b.classList.add("done"); const idx=LIST.findIndex(x=>x[0]===k[0]); b.setAttribute("aria-current", idx===cur); b.onclick=()=>show(idx); }
+    g.appendChild(b);
+  }
+}
+
+// ---- sound (device text-to-speech)
+let voices=[], lastU=null;   // keep a reference: iOS drops utterances that get garbage-collected
+function loadVoices(){ try{ voices=speechSynthesis.getVoices()||[]; }catch(e){} }
+if ("speechSynthesis" in window){ loadVoices(); try{ speechSynthesis.onvoiceschanged=loadVoices; }catch(e){} }
+// Macha's voice: prefer a child-like voice when the device has one; otherwise a light female voice pitched up
+const KID_JA=/hattori|o-ren|kyoko|siri.*female|female/i, KID_EN=/junior|kid|child|flo|sandy|shelley|grandma|samantha|ava|zoe|nicky|allison|karen|moira|female/i;
+function jaVoice(){ const ja=voices.filter(v=>/^ja/i.test(v.lang||"")); return ja.find(v=>/o-ren|hattori/i.test(v.name)) || ja.find(v=>/kyoko/i.test(v.name)) || ja.find(v=>KID_JA.test(v.name)) || ja[0] || null; }
+function enVoice(){ const en=voices.filter(v=>/^en/i.test(v.lang||"")); return en.find(v=>/junior/i.test(v.name)) || en.find(v=>/flo|sandy|shelley/i.test(v.name)) || en.find(v=>/samantha/i.test(v.name)) || en.find(v=>KID_EN.test(v.name)) || en[0] || null; }
+const MACHA_PITCH=1.6;   // higher pitch = younger-sounding
+function speakNow(text, lang){
+  const u=new SpeechSynthesisUtterance(text); u.lang=lang||"ja-JP"; u.rate=lang==="en-US"?1.0:0.85; u.pitch=MACHA_PITCH; u.volume=1;
+  const v = lang==="en-US" ? enVoice() : jaVoice(); if (v) u.voice=v;
+  u.onerror=(e)=>{ if (e.error!=="interrupted" && e.error!=="canceled") say("No sound came out. Check the iPad is not muted. Opening this page in Safari usually helps."); };
+  lastU=u; try{ speechSynthesis.resume(); }catch(e){} speechSynthesis.speak(u);
+}
+// Macha says the feedback out loud in English (only when the device can speak)
+function cheer(text){
+  if (!("speechSynthesis" in window)) return;
+  loadVoices();
+  if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); setTimeout(()=>speakNow(text,"en-US"), 120); }
+  else speakNow(text,"en-US");
+}
+$("speak").onclick=()=>{
+  if (!("speechSynthesis" in window)) { say("This device can't read aloud here."); return; }
+  const k=LIST[cur]; const text=`${k[0]}。${k[2]}。`;
+  loadVoices();
+  if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); setTimeout(()=>speakNow(text), 120); }
+  else speakNow(text);
+  if (!jaVoice()) $("hint").textContent="No Japanese voice found. On iPad: Settings → Accessibility → Spoken Content → Voices → Japanese";
+};
+
+// ---- Macha looks at the drawing (Claude vision)
+(async ()=>{
+  try{
+    const sample = window.claude ? await window.claude.use("sample") : null; if (!sample) return;
+    const lim = await sample.limits().catch(()=>null); if (!lim || !lim.images) return;
+    live=sample; $("ai").hidden=false;
+  }catch(e){}
+})();
+$("ai").onclick=async ()=>{
+  if (!live) return; const k=LIST[cur];
+  if (!strokes.length){ say("Write the letter first, then I'll take a look."); return; }
+  const btn=$("ai"); btn.disabled=true; say("Macha is looking…");
+  const c=document.createElement("canvas"); c.width=c.height=512; const x=c.getContext("2d");
+  x.fillStyle="#fff"; x.fillRect(0,0,512,512); renderStrokes(x,512,1);
+  const blob = await new Promise(res=>c.toBlob(res,"image/png"));
+  const prompt = `This image shows the hiragana character "${k[0]}" (${romajiOf(k)}) handwritten on an iPad with a pencil by a child aged 8 to 10 who reads English but is learning Japanese. ${guideOn?"A faint example was visible while writing.":"No example was visible; written from memory."} The dark navy lines on white are the child's writing. Judge whether it is readable as "${k[0]}", what is good about the shape, and ONE thing to fix. Reply with only this JSON: {"readable": true or false, "praise": "one short friendly sentence in simple English, max 12 words", "tip": "one specific fix in simple English, max 15 words"}`;
+  try{
+    const r = await live.json(prompt, {images: blob, modelTier:"default"});
+    const ok = !!r.readable;
+    bubble.innerHTML = `<span class="big ${ok?"ok":"mid"}">${ok?"I can read it!":"Almost there"}</span>${esc(String(r.praise||""))}<br>💡 ${esc(String(r.tip||""))}`;
+    cheer((ok?"I can read it! ":"Almost there. ") + String(r.praise||"") + " " + String(r.tip||""));
+  }catch(e){
+    if (e && e.code==="not_granted"){ $("ai").hidden=true; say("Macha is taking a break. Use Check! instead."); }
+    else if (e && e.code==="rate_limited") say("Macha is busy right now. Try again in a minute.");
+    else if (e && e.code!=="cancelled") say("Couldn't reach Macha. Tap again to retry.");
+  } finally { btn.disabled=false; }
+};
+
+// ---- open in Safari helper
+// Use this page's own address (the artifact host) rather than claude.ai, so the link lands on the app itself, not on the Claude chat UI.
+(function(){
+  try{
+    const direct = location.href.replace(/#.*$/,"");
+    // keep the claude.ai link: the frame host alone does not open outside the app
+    void direct;
+  }catch(e){}
+})();
+$("openSafari").onclick=()=>{ $("safariBox").hidden=!$("safariBox").hidden; };
+const STANDALONE = (window.top===window) && !window.claude;
+if (STANDALONE){ $("openSafari").hidden=true; }
+
+$("copyLink").onclick=async ()=>{
+  const t=$("linkText"); try{ await navigator.clipboard.writeText(t.value); $("copyLink").textContent="Copied!"; }catch(e){ t.focus(); t.select(); $("copyLink").textContent="Select & copy"; }
+  setTimeout(()=>{ $("copyLink").textContent="Copy link"; },2000);
+};
+// ---- boot
+function boot(){
+  renderWho(); renderStars(); renderGrid(); show(0); size();
+  if (document.fonts && document.fonts.load) document.fonts.load('600 100px "Klee One"').then(()=>{ drawGuide(); }).catch(()=>{});
+  window.addEventListener("resize", size);
+  try{ const mq=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)"); if (mq){ if (mq.addEventListener) mq.addEventListener("change", drawGuide); else if (mq.addListener) mq.addListener(drawGuide); } }catch(e){}
+}
+try{ boot(); }catch(e){ console.error("boot", e); }
+
+// =====================================================================
+// READ TAB  — passages, tap-for-help ladder, word cards, read-aloud check
+// =====================================================================
+// token: plain string (kana / punctuation) or [surface, reading, english]
+const PASSAGES = [
+ {id:"umi", title:"海の日 (Grade 2)", level:2, tokens:[
+  "きょうは ",["日曜日","にちようび","Sunday"],"。",
+  "わたしは、",["お父さん","おとうさん","dad"],"と ",["海","うみ","sea"],"に ",["行きました","いきました","went"],"。",
+  ["空","そら","sky"],"は ",["青くて","あおくて","blue"],"、",["白い","しろい","white"],["雲","くも","cloud"],"が ",["一つ","ひとつ","one"]," うかんで いました。",
+  ["小さな","ちいさな","small"],["魚","さかな","fish"],"が、",["足","あし","foot"],"の ",["下","した","under"],"を ",["通りました","とおりました","passed by"],"。",
+  "「",["見て","みて","look"],"！」と ",["大きな","おおきな","big"],["声","こえ","voice"],"で ",["言う","いう","say"],"と、",["お父さん","おとうさん","dad"],"は ",["手","て","hand"],"を たたいて わらいました。",
+  ["帰る","かえる","go home"]," とき、",["お母さん","おかあさん","mom"],"に ",["話す","はなす","tell"]," ことを ",["考えました","かんがえました","thought about"],"。"],
+  qs:[
+   {t:"choice", q:"わたしは、だれと 海に 行きましたか。", opts:["お母さん","お父さん","お兄さん"], a:1, why:"Which word in the story tells you?"},
+   {t:"choice", q:"空に うかんで いたのは 何ですか。", opts:["白い 雲","青い 魚","大きな 声"], a:0, why:"Find the line about the sky."},
+   {t:"choice", q:"「見て！」と 言ったとき、お父さんは どう しましたか。", opts:["泣いた","手を たたいて わらった","帰った"], a:1, why:"What did dad do with his hands?"}],
+  write:{q:"あなたなら、お母さんに 何を 話しますか。一つ 書きましょう。", model:"海で小さな魚を見たことを話す。"}},
+ {id:"eki", title:"駅で待つ朝 (Grade 4)", level:4, tokens:[
+  ["夏休み","なつやすみ","summer vacation"],"の ",["朝","あさ","morning"],"、ぼくは ",["兄","あに","big brother"],"と いっしょに ",["駅","えき","station"],"へ ",["向かいました","むかいました","headed"],"。",
+  ["遠く","とおく","far away"],"の ",["町","まち","town"],"から、おばあちゃんが ",["来る","くる","come"],"のです。",
+  ["電車","でんしゃ","train"],"は ",["十分","じっぷん","ten minutes"]," おくれて いました。",
+  ["兄","あに","big brother"],"は ",["何度","なんど","many times"],"も ",["時計","とけい","clock"],"を ",["見て","みて","look at"],"、ぼくは ",["自動","じどう","vending (automatic)"],"はんばいきの ",["前","まえ","in front of"],"を ",["行ったり","いったり","go"],["来たり","きたり","come"]," しました。",
+  "やっと ドアが ",["開いて","ひらいて","opened"],"、",["大きな","おおきな","big"],["荷物","にもつ","luggage"],"を ",["持った","もった","carried"]," おばあちゃんが ",["笑って","わらって","smiled"],["手","て","hand"],"を ふりました。",
+  "「",["重い","おもい","heavy"],"でしょう。」と ",["兄","あに","big brother"],"が ",["荷物","にもつ","luggage"],"を ",["受け取る","うけとる","take"],"と、おばあちゃんは 「",["元気","げんき","well"],"な ",["顔","かお","face"],"を ",["見に","みに","to see"]," ",["来た","きた","came"],"のよ。」と ",["言いました","いいました","said"],"。",
+  ["去年","きょねん","last year"],"の ",["約束","やくそく","promise"],"を、おばあちゃんは わすれて いませんでした。"],
+  qs:[
+   {t:"choice", q:"ぼくと 兄は、なぜ 駅へ 行きましたか。", opts:["電車に 乗るため","おばあちゃんを むかえるため","荷物を 買うため"], a:1, why:"Look at the second sentence."},
+   {t:"choice", q:"電車を 待つ あいだ、兄は 何を して いましたか。", opts:["何度も 時計を 見て いた","自動はんばいきで 買って いた","笑って 手を ふって いた"], a:0, why:"Which line is about 兄?"},
+   {t:"choice", q:"おばあちゃんが 来た いちばんの 理由は 何ですか。", opts:["荷物を とどけるため","重い ものを 持つため","元気な 顔を 見るため"], a:2, why:"What did she say with her own words?"}],
+  write:{q:"おばあちゃんは「元気な顔を見に来たのよ」と言いました。おばあちゃんは、どんな気持ちだったと思いますか。", model:"ずっと会いたかったから、会えてうれしい気持ち。"}},
+];
+
+const rstore = {
+  get(k,d){ return store.get("pq.r."+who+"."+k, d); },
+  set(k,v){ store.set("pq.r."+who+"."+k, v); },
+};
+function allPassages(){ return PASSAGES.concat(store.get("pq.custom", [])); }
+function today(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function daysFrom(dateStr, n){ const d=new Date(dateStr+"T12:00:00"); d.setDate(d.getDate()+n); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+let rp = null;          // current passage
+let rTok = [];          // token objects {i, s, r, en, kanji, el}
+let reading=false, rStart=0, transcript="", rec=null, parentOn=false;
+let helpWord=null, stumbles=new Set(), tapsThisRead=0;
+let phase="read", runFinal=false, wrec=null;   // phase: read (first/again) → fix (red words) → final (blue run)
+function setSt(o, st){ o.st=st; o.el.classList.remove("read","miss","blue"); if (st==="ok") o.el.classList.add("read"); else if (st==="miss") o.el.classList.add("miss"); else if (st==="blue") o.el.classList.add("blue"); }
+function setStartLabel(){ $("startRead").textContent = phase==="final" ? "💙 Final run" : phase==="fix" ? "🎤 Read again from the top" : "🎤 Start reading"; }
+function stopWordListen(){ if (wrec){ try{ wrec.onend=null; wrec.abort(); }catch(e){} wrec=null; } }
+const rb = t => { $("rbubble").textContent=t; };
+
+// ---------- tabs
+function showTab(name){
+  const w = name==="write";
+  $("writeTab").hidden=!w; $("readTab").hidden=w;
+  $("tabWrite").setAttribute("aria-selected", w); $("tabRead").setAttribute("aria-selected", !w);
+  store.set("pq.tab", name);
+  if (!w){ renderPassageList(); loadPassage(rstore.get("lastP", allPassages()[0].id)); showQuiz(); }
+  else requestAnimationFrame(size);
+}
+$("tabWrite").onclick=()=>showTab("write"); $("tabRead").onclick=()=>showTab("read");
+try{ $("machaRead").outerHTML = document.querySelector("#writeTab .coach svg").outerHTML; }catch(e){}
+
+// ---------- passages
+function renderPassageList(){
+  const sel=$("passageSel"); sel.innerHTML="";
+  for (const p of allPassages()){ const o=document.createElement("option"); o.value=p.id; o.textContent=p.title; sel.appendChild(o); }
+}
+$("passageSel").onchange=()=>loadPassage($("passageSel").value);
+
+function loadPassage(id){
+  rp = allPassages().find(p=>p.id===id) || allPassages()[0];
+  $("passageSel").value=rp.id; rstore.set("lastP", rp.id);
+  stopWordListen(); phase="read"; runFinal=false; setStartLabel();
+  rTok=[]; const box=$("passage"); box.innerHTML=""; stumbles=new Set(); tapsThisRead=0; helpWord=null; $("helper").hidden=true; $("result").hidden=true;
+  let i=0, prevEl=null;
+  for (const t of rp.tokens){
+    const o = typeof t==="string" ? {i:i++, s:t, kanji:false} : {i:i++, s:t[0], r:t[1], en:t[2], kanji:true};
+    const el=document.createElement("span"); el.className="w"+(o.kanji?" k":""); el.dataset.i=o.i;
+    if (o.kanji){ el.innerHTML=`<ruby>${esc(o.s)}<rt>${esc(o.r)}</rt></ruby>`; el.onclick=()=>tapWord(o); }
+    else el.textContent=o.s;
+    o.el=el; rTok.push(o);
+    // keep closing punctuation glued to the word before it so 。 never starts a line
+    if (!o.kanji && /^[、。」！？]/.test(o.s) && prevEl){ const wrap=document.createElement("span"); wrap.className="s"; wrap.style.whiteSpace="nowrap"; prevEl.replaceWith(wrap); wrap.appendChild(prevEl); wrap.appendChild(el); }
+    else box.appendChild(el);
+    prevEl=el;
+  }
+  const sessions = rstore.get("sess."+rp.id, []);
+  const day = Math.min(sessions.length+1, 3);
+  $("plan").textContent = `Day ${day} of 3 · ` + (day===1?"Macha reads, then you read":day===2?"Read again, then answer questions":"Read, then write about it");
+  $("qs").hidden = day<2; $("writeQ").hidden = day<3;
+  if (day>=2) renderQuestions();
+  if (day>=3){ $("wprompt").textContent=rp.write.q; $("wans").value=""; $("wfeedback").hidden=true; }
+  rb(day===1 ? "New story! Tap 🐼 and I'll read it first. Then you read it." : `Welcome back! Last time: ${fmtSess(sessions[sessions.length-1])}. Let's beat it.`);
+  renderReport();
+}
+function fmtSess(s){ return s ? `${s.sec}s, ${s.acc==null?"no mic":s.acc+"% right"}, ${s.taps} help taps` : "—"; }
+
+// ---------- tap-for-help ladder
+function wordKey(o){ return o.s; }
+function speakJa(text){ if (!("speechSynthesis" in window)) return; loadVoices(); if (speechSynthesis.speaking||speechSynthesis.pending){ speechSynthesis.cancel(); setTimeout(()=>speakNow(text,"ja-JP"),120);} else speakNow(text,"ja-JP"); }
+function tapWord(o){
+  if (parentOn){ // grown-up marks a stumble
+    if (!reading && o.st==="miss"){ wordOK(o); return; }   // grown-up says it was fine
+    if (stumbles.has(o.i)){ stumbles.delete(o.i); o.el.classList.remove("stumble"); } else { stumbles.add(o.i); o.el.classList.add("stumble"); }
+    return;
+  }
+  if (!reading && o.st==="miss"){ fixWord(o); return; }   // red word: Macha reads it, then the child says it
+  if (reading){ stumbles.add(o.i); setSt(o,"miss"); }      // needing help while reading = red
+  const taps = rstore.get("taps", {}); const n=(taps[wordKey(o)]||0)+1; taps[wordKey(o)]=n; rstore.set("taps",taps);
+  tapsThisRead++; addCard(o);
+  document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); o.el.classList.add("now");
+  helpWord=o;
+  if (n<=2){ reveal(o, n===1 ? `This is ${o.r}. In class you can ask: 「これ、なんて読むの？」 Try saying it!` : `${o.r} again. Say it out loud so it sticks: ${o.r}.`); return; }
+  if (n===3){ ladder(o, 0); return; }
+  waitThenLadder(o);
+}
+function reveal(o, text){
+  o.el.classList.add("show"); speakJa(o.r);
+  const h=$("helper"); h.hidden=false;
+  h.innerHTML = `<span class="big">${esc(o.s)} → ${esc(o.r)}</span>${esc(text)}<br><span class="hint">${esc(o.en)}</span>`;
+  rb(text);
+}
+function waitThenLadder(o){
+  const h=$("helper"); h.hidden=false; let t=10;
+  h.innerHTML = `<span class="big">${esc(o.s)}</span>You've asked about this one ${rstore.get("taps",{})[o.s]} times. Think first, I'll wait. <span class="wait" id="cd">${t}</span><div class="opts"><button type="button" id="gotIt">💡 I remember it!</button></div>`;
+  rb("Think first. I'll wait.");
+  const iv=setInterval(()=>{ t--; const c=$("cd"); if (c) c.textContent=t; if (t<=0){ clearInterval(iv); if (helpWord===o) ladder(o,0); } },1000);
+  $("gotIt").onclick=()=>{ clearInterval(iv); checkSay(o); };
+}
+function checkSay(o){
+  const h=$("helper");
+  h.innerHTML = `<span class="big">${esc(o.s)}</span>Say it out loud, then tap the reading you said.<div class="opts" id="opts"></div>`;
+  choices(o, (right)=>{ if (right){ reveal(o, `Yes! ${o.r}. You remembered it.`); markCard(o,true); } else ladder(o,1); });
+}
+function choices(o, cb){
+  const pool = rTok.filter(x=>x.kanji && x.r!==o.r).map(x=>x.r);
+  const d = [...new Set(pool)].sort(()=>Math.random()-.5).slice(0,2);
+  while (d.length<2) d.push(scramble(o.r));
+  const opts=[o.r,...d].sort(()=>Math.random()-.5);
+  const box=$("opts"); box.innerHTML="";
+  for (const r of opts){ const b=document.createElement("button"); b.type="button"; b.textContent=r; b.onclick=()=>cb(r===o.r); box.appendChild(b); }
+}
+function scramble(r){ const a=r.split(""); for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } const s=a.join(""); return s===r? r.slice(1)+r[0] : s; }
+function ladder(o, stepN){
+  const h=$("helper"); h.hidden=false;
+  const steps=[];
+  steps.push(()=>{ h.innerHTML=`<span class="big">${esc(o.s)}</span>Hint 1: it starts with 「${esc(o.r[0])}…」. Say the rest!<div class="opts"><button type="button" id="nx">Next hint</button><button type="button" id="gi">I give up</button></div>`; speakJa(o.r[0]); wire(); });
+  steps.push(()=>{ h.innerHTML=`<span class="big">${esc(o.s)}</span>Hint 2: which one sounds right?<div class="opts" id="opts"></div><div class="opts"><button type="button" id="gi">I give up</button></div>`; choices(o,(ok)=>{ if (ok){ reveal(o,`Yes! ${o.r}. Say it one more time.`); markCard(o,true); } else next(); }); $("gi").onclick=()=>giveUp(o); });
+  const earlier = rTok.find(x=>x.kanji && x.s===o.s && x.i<o.i);
+  if (earlier) steps.push(()=>{ h.innerHTML=`<span class="big">${esc(o.s)}</span>Hint 3: you already read this word earlier in the story. It's glowing green. Go back and find it!<div class="opts"><button type="button" id="nx">Next hint</button><button type="button" id="gi">I give up</button></div>`; earlier.el.classList.remove("flash"); void earlier.el.offsetWidth; earlier.el.classList.add("flash"); earlier.el.scrollIntoView({block:"center",behavior:"smooth"}); wire(); });
+  steps.push(()=>{ h.innerHTML=`<span class="big">${esc(o.s)}</span>Hint ${earlier?4:3}: in English it means "${esc(o.en)}". What's the Japanese word?<div class="opts"><button type="button" id="nx">Show me</button><button type="button" id="gi">I give up</button></div>`; wire(); });
+  steps.push(()=>{ reveal(o, `It's ${o.r}. Say it out loud twice, and write it once on the Write tab later.`); markCard(o,false); });
+  let k=stepN; const run=()=>steps[Math.min(k,steps.length-1)](); const next=()=>{ k++; run(); };
+  function wire(){ const nx=$("nx"); if (nx) nx.onclick=next; const gi=$("gi"); if (gi) gi.onclick=()=>giveUp(o); }
+  run();
+}
+function giveUp(o){ reveal(o, `That's okay. It's ${o.r}. Say it with me: ${o.r}.`); markCard(o,false,true); }
+
+// ---------- word cards (spaced repetition, Leitner 0..3)
+function addCard(o){
+  const cards=rstore.get("cards",{}); const c=cards[o.s]||{s:o.s,r:o.r,en:o.en,level:0,streak:0,due:daysFrom(today(),1),last:null,gave:0};
+  if (!cards[o.s]) cards[o.s]=c; rstore.set("cards",cards);
+}
+function markCard(o, right, gave){
+  const cards=rstore.get("cards",{}); const c=cards[o.s]; if (!c) return null;
+  if (gave) c.gave=(c.gave||0)+1;
+  if (right && c.last!==today()){ c.streak++; c.level=Math.min(3,c.level+1); } else if (!right){ c.streak=0; c.level=0; }
+  c.last=today(); c.due=daysFrom(today(), [1,2,4,7][c.level]); rstore.set("cards",cards); return c;
+}
+function dueCards(){ const cards=rstore.get("cards",{}); const t=today(); return Object.values(cards).filter(c=>c.due<=t && c.last!==t && c.streak<3).slice(0,3); }
+let qQueue=[], qCur=null;
+function showQuiz(){
+  qQueue=dueCards(); $("quiz").hidden = qQueue.length===0; if (!qQueue.length) return; nextQ();
+}
+function nextQ(){
+  qCur=qQueue.shift(); if (!qCur){ $("quiz").hidden=true; rb("Word check done. Now let's read!"); cheer("Word check done. Let's read!"); return; }
+  $("qword").textContent=qCur.s; $("qread").hidden=true; $("qread").textContent=qCur.r+" · "+qCur.en;
+  $("qShow").hidden=false; $("qYes").hidden=true; $("qNo").hidden=true; $("qLeft").textContent=`${qQueue.length} more after this`;
+}
+$("qShow").onclick=()=>{ $("qread").hidden=false; speakJa(qCur.r); $("qShow").hidden=true; $("qYes").hidden=false; $("qNo").hidden=false; };
+$("qYes").onclick=()=>{ const c=markCard(qCur,true); if (c && c.streak>=3){ cheer("You learned "+qCur.r+"!"); } nextQ(); };
+$("qNo").onclick=()=>{ markCard(qCur,false); nextQ(); };
+
+// ---------- shadowing: Macha reads sentence by sentence
+$("shadow").onclick=()=>{
+  if (!("speechSynthesis" in window)) { rb("No voice on this device. Read it together with a grown-up."); return; }
+  const sents=[]; let cur=[];
+  for (const o of rTok){ cur.push(o); if (/[。！？]/.test(o.s)){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
+  let k=0; loadVoices(); speechSynthesis.cancel();
+  const go=()=>{
+    document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
+    if (k>=sents.length){ rb("Your turn! Tap ⏱ Start reading and read it all by yourself."); return; }
+    const sn=sents[k++]; sn.forEach(o=>o.el.classList.add("now"));
+    const text=sn.map(o=>o.kanji?o.r:o.s).join("").replace(/\s+/g,"");
+    const u=new SpeechSynthesisUtterance(text); u.lang="ja-JP"; u.rate=0.8; u.pitch=MACHA_PITCH; const v=jaVoice(); if (v) u.voice=v; lastU=u;
+    u.onend=()=>setTimeout(go, 1800);  // pause so the child can echo the sentence
+    speechSynthesis.speak(u);
+  };
+  rb("Listen, then say each sentence after me."); go();
+};
+
+// ---------- read-aloud check (timer + on-device speech recognition when allowed)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+$("parentMode").onclick=()=>{ parentOn=!parentOn; $("parentMode").setAttribute("aria-pressed",parentOn); rb(parentOn?"Grown-up mode: tap the words the child stumbled on.":"Tap a word and I'll help you read it."); };
+$("startRead").onclick=()=>{
+  stopWordListen(); runFinal=(phase==="final");
+  reading=true; rStart=Date.now(); transcript=""; tapsThisRead=0; stumbles=new Set();
+  document.querySelectorAll(".passage .w").forEach(e=>e.classList.remove("stumble","show","now","cursor"));
+  rTok.forEach(o=>setSt(o,""));
+  $("startRead").hidden=true; $("doneRead").hidden=false; $("result").hidden=true; $("helper").hidden=true; $("rbar").style.width="0";
+  rb(runFinal ? "Final run! Read from the top to the end without stopping. No red words, and everything turns blue! 💙" : "Go! Read the whole story out loud. Green means good. Red means try again. Tap ✅ Done when you finish.");
+  $("micStatus").textContent="";
+  $("dictIn").value=""; $("dictBox").hidden=true;
+  let srOK=false;
+  if (SR){
+    try{
+      rec=new SR(); rec.lang="ja-JP"; rec.continuous=true; rec.interimResults=true;
+      let finals="";
+      rec.onresult=(e)=>{ let interim=""; for (let i=e.resultIndex;i<e.results.length;i++){ const r=e.results[i]; if (r.isFinal) finals+=r[0].transcript; else interim+=r[0].transcript; } transcript=finals+interim; $("micStatus").textContent="🎤 listening… "+transcript.slice(-30); paintProgress(transcript); };
+      rec.onerror=(e)=>{ rec=null;
+        if (STANDALONE && (e.error==="not-allowed"||e.error==="service-not-allowed")){ $("micStatus").textContent="Microphone blocked. In Safari: tap the \"AA\" or site icon in the address bar → Website Settings → Microphone → Allow, then tap Start again."; rb("I need the microphone. Allow it in Safari, then tap Start again."); reading=false; $("startRead").hidden=false; $("doneRead").hidden=true; return; }
+        useDictation(e.error==="not-allowed"||e.error==="service-not-allowed" ? "The mic can't be used directly here, so use the keyboard mic instead." : "Mic error ("+e.error+"). Use the keyboard mic instead."); };
+      rec.onstart=()=>{ srOK=true; };
+      rec.onend=()=>{ if (reading && rec){ try{ rec.start(); }catch(e){} } };
+      rec.start(); $("micStatus").textContent="🎤 Listening… read the story out loud.";
+    }catch(e){ rec=null; useDictation("No mic here. Use the keyboard mic instead."); }
+    // if recognition never actually started within 2.5 s, fall back to keyboard dictation
+    if (!STANDALONE) setTimeout(()=>{ if (reading && !srOK && !transcript){ if (rec){ try{ rec.onend=null; rec.stop(); }catch(e){} rec=null; } useDictation("Use the keyboard mic to read aloud."); } }, 2500);
+  } else useDictation("Use the keyboard mic to read aloud.");
+};
+// keyboard dictation fallback: the iPad keyboard's mic button types what the child says
+function useDictation(msg){
+  if (!reading) return;
+  $("micStatus").textContent=msg; $("dictBox").hidden=false;
+  const d=$("dictIn");
+  const isMac = /Mac/.test(navigator.platform||"") && !("ontouchend" in document);
+  if (isMac){
+    $("dictText").innerHTML = "Click the dotted box, then press the <b>🌐 (fn) key twice</b> to start Mac dictation and read the story. The words above turn green as you read.<br><span class=hint>First time: System Settings → Keyboard → Dictation → On, and add 日本語 under Languages.</span>";
+    d.placeholder="← click here, then press 🌐 twice";
+  } else d.placeholder="← tap here first, then the mic key";
+  d.focus();
+  // keep the voice input focused while reading, so the keyboard mic keeps feeding the story
+  d.addEventListener("blur", ()=>{ if (reading && !$("dictBox").hidden) setTimeout(()=>{ if (reading) d.focus(); }, 150); }, {once:false});
+}
+$("dictIn").addEventListener("input", ()=>{
+  if (!reading) return; transcript=$("dictIn").value; paintProgress(transcript);
+  const latin=(transcript.match(/[A-Za-z]/g)||[]).length, jp=(transcript.match(/[぀-ヿ一-鿿]/g)||[]).length;
+  if (latin>6 && latin>jp*2){ $("micStatus").textContent="⚠️ The keyboard is listening in English. Hold the 🌐 globe key and choose 日本語, then tap the mic again."; rb("Oops, that came out in English. Switch the keyboard to Japanese (hold the 🌐 key), then try again."); }
+  else if (jp>0) $("micStatus").textContent="🎤 Listening in Japanese… keep going!";
+});
+$("doneRead").onclick=()=>{
+  reading=false; const sec=Math.max(1,Math.round((Date.now()-rStart)/1000));
+  if (rec){ try{ rec.onend=null; rec.stop(); }catch(e){} }
+  $("startRead").hidden=false; $("doneRead").hidden=true;
+  document.querySelectorAll(".passage .w").forEach(e=>e.classList.remove("cursor")); $("rbar").style.width="100%";
+  const finalRun=runFinal, kt=rTok.filter(o=>o.kanji);
+  let acc=null;
+  if (transcript.trim()){
+    const r=judge(transcript);
+    for (const o of rTok){ if (o.kanji) setSt(o, (o.i<=r.last && r.st[o.i]==="ok" && !stumbles.has(o.i)) ? "ok" : "miss"); else setSt(o, o.i<=r.last ? "ok" : ""); }
+    acc = kt.length ? Math.round(100*kt.filter(o=>o.st==="ok").length/kt.length) : 100;
+  } else {   // no mic: the grown-up marked the stumbles
+    for (const o of rTok) setSt(o, o.kanji ? (stumbles.has(o.i)?"miss":"ok") : "ok");
+  }
+  rec=null; $("dictBox").hidden=true;
+  const reds=kt.filter(o=>o.st==="miss");
+  for (const o of reds) addCard(o);
+  if (!reds.length) rTok.forEach(o=>{ if (!o.kanji) setSt(o,"ok"); });
+  const sessions=rstore.get("sess."+rp.id,[]);
+  const prev=[...sessions].reverse().find(x=>x.date!==today());
+  let msg=`<b>${sec} seconds</b>`;
+  if (prev) msg += prev.sec>sec ? ` · ${prev.sec-sec}s faster than last time! 🚀` : prev.sec<sec ? ` · last time was ${prev.sec}s, that's okay` : " · same as last time";
+  msg += `<br>${acc!=null?acc+"% of the words matched what I heard":"No mic, so a grown-up checked"} · ${tapsThisRead} help taps`;
+  let pass=false;
+  if (reds.length){
+    phase="fix"; runFinal=false;
+    msg += `<br>🔴 ${reds.length} red word${reds.length>1?"s":""}: ${reds.map(o=>o.s).join("、")}<br><b>Tap each red word. I'll read it, then you say it. When they're all green, we do the blue run!</b>`;
+    rb("Tap a red word. I'll read it, then you say it!"); cheer("Tap each red word. I will read it, then you say it.");
+  } else if (!finalRun){
+    phase="final";
+    msg += `<br><b>All green! 🟢</b> Now read it once more from the top without stopping. No red, and it all turns blue 💙`;
+    rb("All green! Tap 💙 Final run and read it with no stops!"); cheer("All green! Now read it once more without stopping, for blue.");
+  } else {
+    pass=true; phase="read"; rTok.forEach(o=>setSt(o,"blue"));
+    msg += `<br><b>All blue! Perfect run! 💙📖⭐</b>`;
+  }
+  setStartLabel();
+  const stumbleWords=reds.map(o=>o.s);
+  const last=sessions[sessions.length-1];
+  if (last && last.date===today()){ const was=last.pass; last.sec=sec; last.acc=acc; last.taps=tapsThisRead; last.stumbles=stumbleWords; last.reads=(last.reads||1)+1; if (pass){ last.pass=true; last.blue=true; } rstore.set("sess."+rp.id,sessions);
+    if (pass && !was) giveStar(); }
+  else { sessions.push({date:today(),sec,acc,taps:tapsThisRead,stumbles:stumbleWords,pass,blue:pass,reads:1}); rstore.set("sess."+rp.id,sessions); if (pass) giveStar(); }
+  if (pass) cheer("Perfect! All blue! You read the whole story!");
+  $("result").innerHTML=msg; $("result").hidden=false;
+  const day=Math.min(sessions.length,3); $("qs").hidden=day<2; $("writeQ").hidden=day<3; if (day>=2) renderQuestions(); if (day>=3){ $("wprompt").textContent=rp.write.q; }
+  renderReport();
+};
+function giveStar(){ const d=pdata(); d.stars=(d.stars||0)+1; savep(d); renderStars(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on"); }
+
+// ---- red word: Macha reads it, the child says it, it turns green
+function speakJaThen(text, cb){
+  if (!("speechSynthesis" in window)){ if (cb) cb(); return; }
+  loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
+  const u=new SpeechSynthesisUtterance(text); u.lang="ja-JP"; u.rate=0.8; u.pitch=MACHA_PITCH; const v=jaVoice(); if (v) u.voice=v; lastU=u;
+  let done=false; const fin=()=>{ if (done) return; done=true; if (cb) setTimeout(cb,350); };
+  u.onend=fin; u.onerror=fin; setTimeout(fin,4500);
+  setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} speechSynthesis.speak(u); },120);
+}
+function fixWord(o){
+  stopWordListen(); helpWord=o;
+  document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); o.el.classList.add("now","show");
+  const h=$("helper"); h.hidden=false;
+  h.innerHTML=`<span class="big">${esc(o.s)} → ${esc(o.r)}</span>Listen, then say it yourself!<br><span class="hint">${esc(o.en)}</span><div class="opts"><button type="button" id="fxHear">🔊 Hear again</button><button type="button" id="fxSay">🎤 My turn</button><button type="button" id="fxOk">✅ Grown-up says OK</button></div>`;
+  rb(`This one is ${o.r}. Listen, then say it!`);
+  const go=()=>speakJaThen(o.r, ()=>{ if (helpWord===o) listenWord(o); });
+  $("fxHear").onclick=go; $("fxSay").onclick=()=>listenWord(o); $("fxOk").onclick=()=>wordOK(o);
+  go();
+}
+function listenWord(o){
+  stopWordListen();
+  if (!SR){ $("micStatus").textContent="No mic here. Say it out loud, then ask a grown-up to tap ✅."; return; }
+  try{
+    const r=new SR(); wrec=r; r.lang="ja-JP"; r.continuous=false; r.interimResults=true; r.maxAlternatives=3;
+    let got=false;
+    r.onresult=(e)=>{ let heard="";
+      for (let i=e.resultIndex;i<e.results.length;i++) for (let j=0;j<e.results[i].length;j++){ const t=e.results[i][j].transcript.replace(/[\s、。「」！？]/g,""); heard+=t; if (t.includes(o.s)||t.includes(o.r)) got=true; }
+      if (got){ stopWordListen(); wordOK(o); } else $("micStatus").textContent="🎤 I heard: "+heard.slice(-20); };
+    r.onerror=(e)=>{ wrec=null; $("micStatus").textContent = (e.error==="not-allowed"||e.error==="service-not-allowed") ? "Microphone blocked. Allow it in Safari's Website Settings." : "Mic error ("+e.error+"). Tap 🎤 My turn to try again."; };
+    r.onend=()=>{ if (!got && wrec===r){ wrec=null; $("micStatus").textContent="Not yet. Tap 🔊 to hear me again, then 🎤 My turn."; } };
+    r.start(); $("micStatus").textContent="🎤 Your turn! Say 「"+o.r+"」";
+  }catch(e){ wrec=null; $("micStatus").textContent="Couldn't start the mic. Tap 🎤 My turn to try again."; }
+}
+function wordOK(o){
+  stopWordListen(); stumbles.delete(o.i); setSt(o,"ok"); o.el.classList.remove("show","now","stumble");
+  const reds=rTok.filter(x=>x.kanji && x.st==="miss");
+  const h=$("helper"); h.hidden=false; $("micStatus").textContent="";
+  if (reds.length){ h.innerHTML=`<span class="big">${esc(o.s)} ✔</span>Green! ${reds.length} red left.`; rb(`Yes! ${o.r}! ${reds.length} red left.`); cheer("Yes! Nice."); }
+  else { rTok.forEach(x=>{ if (!x.kanji) setSt(x,"ok"); }); phase="final"; setStartLabel();
+    h.innerHTML=`<span class="big">${esc(o.s)} ✔</span><b>All green! 🟢</b> Tap <b>💙 Final run</b> and read it with no stops.`; rb("All green! Tap 💙 Final run!"); cheer("All green! Now read it once more without stopping, for blue."); }
+}
+// live progress: green for what was read, red for kanji words that were skipped or misread
+function judge(heard){
+  const h=heard.replace(/[\s、。「」！？!?,.]/g,""); let hpos=0, last=-1; const hit={};
+  for (const o of rTok){
+    const surf=o.s.replace(/[\s、。「」！？]/g,""); if (!surf) continue;
+    const win=h.slice(hpos, hpos+surf.length+14);
+    let at=win.indexOf(surf), len=surf.length;
+    if (at<0 && o.kanji){ at=win.indexOf(o.r); len=o.r.length; }
+    if (at<0 && surf.length>=3){ const part=surf.slice(0,2); at=win.indexOf(part); len=part.length; }
+    if (at>=0){ hpos+=at+len; hit[o.i]=1; last=o.i; }
+  }
+  return {last, st:rTok.map(o=> o.i>last ? "" : (o.kanji ? (hit[o.i]?"ok":"miss") : "ok"))};
+}
+function paintProgress(heard){
+  if (!heard.replace(/[\s、。「」！？!?,.]/g,"")) return;
+  const r=judge(heard);
+  rTok.forEach(o=>{ o.el.classList.remove("cursor"); setSt(o, (o.kanji && stumbles.has(o.i)) ? "miss" : r.st[o.i]); });
+  const nextTok = rTok.find(o=>o.i>r.last && o.s.trim());
+  if (nextTok){ nextTok.el.classList.add("cursor"); nextTok.el.scrollIntoView({block:"nearest",behavior:"smooth"}); }
+  $("rbar").style.width = Math.round(100*(r.last+1)/rTok.length)+"%";
+}
+// character-level alignment of what was heard against the story surface text
+function align(heard){
+  const h=heard.replace(/[\s、。「」！？!?,.]/g,"");
+  const toks=rTok.filter(o=>o.kanji);
+  if (!h||!toks.length) return {acc:0,missed:toks};
+  let hpos=0, ok=0; const missed=[];
+  for (const o of rTok){
+    const surf=o.s.replace(/[\s、。「」！？]/g,""); if (!surf) continue;
+    const win=h.slice(hpos, hpos+surf.length+14);
+    let at=win.indexOf(surf), len=surf.length;
+    if (at<0 && o.kanji){ at=win.indexOf(o.r); len=o.r.length; }
+    if (at<0 && surf.length>=3){ const part=surf.slice(0,2); at=win.indexOf(part); len=part.length; }
+    if (at>=0){ hpos+=at+len; if (o.kanji) ok++; } else if (o.kanji) missed.push(o);
+  }
+  return {acc: Math.round(100*ok/toks.length), missed};
+}
+
+// ---------- questions (day 2) and writing (day 3)
+function renderQuestions(){
+  const box=$("qlist"); box.innerHTML="";
+  rp.qs.forEach((q,qi)=>{
+    const d=document.createElement("div"); d.className="q";
+    d.innerHTML=`<div class="qt">${qi+1}. ${esc(q.q)}</div><div class="opts"></div><div class="why" hidden></div>`;
+    const ob=d.querySelector(".opts"), why=d.querySelector(".why");
+    q.opts.forEach((o,oi)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=["ア","イ","ウ"][oi]+" "+o;
+      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! Why do you think so? Tell a grown-up in Japanese or English."; cheer("Right! Why do you think so?"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); };
+      ob.appendChild(b); });
+    box.appendChild(d);
+  });
+}
+$("wcheck").onclick=async ()=>{
+  const ans=$("wans").value.trim(); const fb=$("wfeedback"); if (!ans){ rb("Say your answer out loud first, then type it."); return; }
+  fb.hidden=false; fb.textContent="Macha is reading your answer…";
+  if (!live){ fb.textContent="Macha can't check here. Show it to a grown-up. Example answer: "+rp.write.model; return; }
+  try{
+    const r=await live.json(`A child aged 8 to 10 who reads English and is learning Japanese answered a reading comprehension question in Japanese. The story is for Japanese grade ${rp.level}. Question: ${rp.write.q} Example of a good answer: ${rp.write.model} Child's answer: ${ans} Judge whether the answer makes sense for the story and is written in natural Japanese. Reply with only this JSON: {"ok": true or false, "praise": "one friendly sentence in simple English, max 12 words", "fix": "if the Japanese needs fixing, the corrected Japanese sentence; otherwise empty string", "tip": "one short tip in simple English, max 15 words"}`, {modelTier:"default", cache:false});
+    fb.innerHTML = `<span class="big ${r.ok?"ok":"mid"}">${r.ok?"Great thinking!":"Almost"}</span>${esc(String(r.praise||""))}${r.fix?`<br>✍️ ${esc(String(r.fix))} (copy this with your pencil)`:""}<br>💡 ${esc(String(r.tip||""))}`;
+    cheer(String(r.praise||"")+" "+String(r.tip||""));
+    const a=rstore.get("qa."+rp.id,{}); a.write=!!r.ok; rstore.set("qa."+rp.id,a); renderReport();
+  }catch(e){ fb.textContent = e&&e.code==="not_granted" ? "Macha isn't allowed to read here. Show your answer to a grown-up." : "Couldn't reach Macha. Tap again."; }
+};
+
+// ---------- grown-up report
+function renderReport(){
+  const sessions=rstore.get("sess."+rp.id,[]); const cards=Object.values(rstore.get("cards",{})); const taps=rstore.get("taps",{}); const qa=rstore.get("qa."+rp.id,{});
+  const learned=cards.filter(c=>c.streak>=3).length;
+  let h=`<p><b>${profiles[who].name}</b> · ${rp.title}</p>`;
+  h+=`<table><tr><th>Date</th><th>Time</th><th>Matched</th><th>Help taps</th><th>Stumbles</th><th>Pass</th></tr>`;
+  for (const s of sessions.slice(-6)) h+=`<tr><td>${s.date}</td><td>${s.sec}s</td><td>${s.acc==null?"—":s.acc+"%"}</td><td>${s.taps}</td><td>${(s.stumbles||[]).join("、")||"—"}</td><td>${s.pass?"✅":"—"}</td></tr>`;
+  h+=`</table>`;
+  const tapped=Object.entries(taps).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([w,n])=>{ const c=cards.find(x=>x.s===w); return `<span class="${c&&c.gave?"gave":""}">${esc(w)}×${n}</span>`; }).join(" · ");
+  h+=`<p>Words asked about (bold = gave up): ${tapped||"none yet"}</p>`;
+  h+=`<p>Word cards: ${cards.length} · learned (3 days in a row): ${learned}</p>`;
+  const qk=Object.keys(qa); if (qk.length) h+=`<p>Questions: ${qk.map(k=>k==="write"?("write "+(qa[k]?"✅":"✗")):("Q"+(+k+1)+" "+(qa[k]?"✅":"✗"))).join(" · ")}</p>`;
+  $("report").innerHTML=h;
+}
+
+// ---------- add a story (paste or photo) with Macha's readings
+$("addPassage").onclick=()=>{ $("addBox").hidden=false; $("addBox").scrollIntoView({behavior:"smooth"}); };
+$("addCancel").onclick=()=>{ $("addBox").hidden=true; };
+$("addPhotoBtn").onclick=()=>$("addPhoto").click();
+let addImg=null;
+$("addPhoto").onchange=()=>{ addImg=$("addPhoto").files[0]||null; $("addStatus").textContent = addImg? "Photo ready. Tap Add with Macha." : ""; };
+$("addGo").onclick=async ()=>{
+  const text=$("addText").value.trim(); if (!text && !addImg){ $("addStatus").textContent="Paste some text or take a photo first."; return; }
+  if (!live){ $("addStatus").textContent="Macha can't add stories here (Claude not available in this view)."; return; }
+  $("addStatus").textContent="Macha is reading… this takes a little while.";
+  const prompt = `${addImg?"The image is a photo of a Japanese reading passage for elementary school. Transcribe the main story text only (ignore page numbers, headers, questions and answer boxes).":"Here is a Japanese reading passage for elementary school:\n"+text}\nSplit the story into tokens for a children's reading app. Every word that contains kanji becomes an array [surface, reading in hiragana, short English meaning]; everything else (kana, spaces, punctuation) stays as a plain string, keeping the original order and text exactly. Also write 3 multiple-choice comprehension questions in simple Japanese for the child's grade (3 options each, give the index of the correct one) and one open writing prompt with a short model answer. Reply with only this JSON: {"title":"short title in Japanese","level": grade number 1-6,"tokens":[...],"qs":[{"t":"choice","q":"...","opts":["...","...","..."],"a":0,"why":"one short English hint about where in the story to look"}],"write":{"q":"...","model":"..."}}`;
+  try{
+    const r=await live.json(prompt, addImg?{images:addImg, modelTier:"default", cache:false}:{modelTier:"default", cache:false});
+    if (!r || !Array.isArray(r.tokens)) throw {code:"invalid_json"};
+    const custom=store.get("pq.custom",[]); const id="c"+Date.now();
+    custom.push({id, title:String(r.title||"My story")+" (Grade "+(r.level||"?")+")", level:+r.level||3, tokens:r.tokens, qs:Array.isArray(r.qs)?r.qs:[], write:r.write||{q:"この話を読んで、思ったことを書きましょう。",model:""}});
+    store.set("pq.custom",custom); renderPassageList(); loadPassage(id); $("addBox").hidden=true; $("addText").value=""; addImg=null; $("addStatus").textContent="";
+    rb("New story added! Tap 🐼 and I'll read it first.");
+  }catch(e){ $("addStatus").textContent = e&&e.code==="not_granted" ? "Claude isn't allowed for this page yet." : "Macha couldn't read that. Try a clearer photo or shorter text."; }
+};
+
+// restore last tab
+try{ showTab(store.get("pq.tab","read")); }catch(e){ console.error("read init", e); try{ renderPassageList(); loadPassage(allPassages()[0].id); }catch(e2){} }
+
+</script>
+
+</body></html>
