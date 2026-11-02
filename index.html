@@ -141,6 +141,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .legend b{padding:1px 8px;border-radius:8px;margin-right:4px}
 .legend .g{background:#E4F3E8;color:var(--sea)}.legend .r{background:#FDE0DC;color:#B3261E}.legend .b{background:#DCEBFF;color:#1B5FB0}
 .passage .w.cursor{box-shadow:0 3px 0 var(--sun)}
+.passage .w.miss.now,.passage .w.miss.show,.passage .w.miss.flash{background:#FDE0DC;color:#B3261E}   /* red wins over the green/yellow help highlights */
 .passage .w{display:inline-block;padding:0 2px;border-radius:6px;position:relative;cursor:pointer}
 .passage .w.k{border-bottom:3px dotted var(--line)}
 .passage .w.k:hover{background:var(--bg)}
@@ -148,7 +149,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .passage .w.show rt{visibility:visible}
 .passage .w.stumble{background:#FDE2D3}
 .passage .w.flash{background:#D7F0DF;animation:flash 1.2s ease-in-out 3}
-.passage .w.now{background:#D7F0DF}
+.passage .w.now{background:#D7F0DF;outline:2px solid var(--sun);outline-offset:1px}
 .passage ruby rt{font-family:var(--body);font-size:12px;color:var(--sea);visibility:hidden;font-weight:800}
 .passage .s{display:inline}
 @keyframes flash{50%{background:#8FD3A6}}
