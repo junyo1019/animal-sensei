@@ -189,7 +189,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 <div class="top">
   <div class="brand">
     <svg width="44" height="50" aria-hidden="true" viewBox="0 0 64 72"><circle cx="15" cy="14" r="8" fill="#7BA23F"/><circle cx="49" cy="14" r="8" fill="#7BA23F"/><ellipse cx="32" cy="58" rx="19" ry="13" fill="#fff" stroke="#5B7F2E" stroke-width="1.5"/><ellipse cx="17" cy="60" rx="6" ry="8" fill="#7BA23F" transform="rotate(20 17 60)"/><ellipse cx="47" cy="60" rx="6" ry="8" fill="#7BA23F" transform="rotate(-20 47 60)"/><circle cx="32" cy="30" r="24" fill="#fff" stroke="#5B7F2E" stroke-width="1.5"/><path d="M30 7c-1-4 1-6 4-7-1 3 0 5 2 6" fill="#A6CB6A" stroke="#5B7F2E" stroke-width="1"/><ellipse cx="20" cy="34" rx="7.5" ry="8.5" fill="#7BA23F" transform="rotate(38 20 34)"/><ellipse cx="44" cy="34" rx="7.5" ry="8.5" fill="#7BA23F" transform="rotate(-38 44 34)"/><ellipse cx="21.5" cy="36" rx="3.6" ry="3.2" fill="#fff"/><ellipse cx="42.5" cy="36" rx="3.6" ry="3.2" fill="#fff"/><path d="M17.6 35.2q3.9-3.4 7.8 0z" fill="#7BA23F"/><path d="M38.6 35.2q3.9-3.4 7.8 0z" fill="#7BA23F"/><circle cx="21.8" cy="37" r="1.7" fill="#2B3A2B"/><circle cx="42.2" cy="37" r="1.7" fill="#2B3A2B"/><circle cx="22.4" cy="36.4" r=".6" fill="#fff"/><circle cx="42.8" cy="36.4" r=".6" fill="#fff"/><ellipse cx="32" cy="43.5" rx="3.3" ry="2.2" fill="#5B7F2E"/><path d="M27.5 47q4.5 4 9 0" stroke="#5B7F2E" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="13.5" cy="43" r="3.2" fill="#FFB3A7" opacity=".85"/><circle cx="50.5" cy="43" r="3.2" fill="#FFB3A7" opacity=".85"/></svg>
-    <div><h1>Animal Sensei</h1><small>FUNKY JAPANESE TEACHER</small></div>
+    <div><h1>Animal Sensei</h1><small>YOUR JAPANESE TEACHER</small></div>
   </div>
   <div class="who" id="who" role="group" aria-label="Who is playing?"></div>
   <label class="grade"><span>Japanese</span><select id="gradeSel" aria-label="Japanese grade"><option value="1">1st Grade</option><option value="2">2nd Grade</option><option value="3">3rd Grade</option><option value="4">4th Grade</option><option value="5">5th Grade</option><option value="6">6th Grade</option></select></label>
@@ -222,6 +222,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
     </div>
     <div class="row">
       <button class="chip" id="speak" type="button">🔊 Hear it</button>
+      <button class="chip" id="watch" type="button">▶ Watch the strokes</button>
       <button class="chip" id="guideBtn" type="button" aria-pressed="true">👀 Example on</button>
     </div>
     <div class="nav">
@@ -404,8 +405,33 @@ function size(){
   for (const c of [guideC,drawC]){ c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr); }
   drawGuide(); redraw();
 }
+// ---- stroke order data: KanjiVG (Ulrich Apel, CC BY-SA 3.0, http://kanjivg.tagaini.net), one SVG path per stroke in a 109x109 box
+let SO = {}, SOP = {};
+const SO_URL = ((window.top===window) && !window.claude) ? "strokes.json" : "https://junyo1019.github.io/animal-sensei/strokes.json";
+fetch(SO_URL).then(r=>r.json()).then(d=>{ SO=d; try{ drawGuide(); }catch(e){} }).catch(()=>{});
+async function ensureSO(ch){   // a character that is not bundled (a story the parent added): fetch it from KanjiVG
+  if (SO[ch] || !ch || !/[぀-ヿ一-鿿]/.test(ch)) return;
+  try{ const t=await (await fetch(`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${ch.codePointAt(0).toString(16).padStart(5,"0")}.svg`)).text();
+    const sp=t.slice(t.indexOf("kvg:StrokePaths"), t.indexOf("kvg:StrokeNumbers")); const ds=[...sp.matchAll(/\sd="([^"]+)"/g)].map(m=>m[1]);
+    if (ds.length){ SO[ch]=ds; drawGuide(); } }catch(e){}
+}
+function soPoints(ch){   // each stroke sampled into 16 points, 0..1 coordinates
+  if (SOP[ch]) return SOP[ch]; if (!SO[ch]) return null;
+  let svg=document.getElementById("soSvg"); if (!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); svg.id="soSvg"; svg.setAttribute("width","0"); svg.setAttribute("height","0"); svg.style.position="absolute"; document.body.appendChild(svg); }
+  const out=[];
+  for (const d of SO[ch]){ const el=document.createElementNS("http://www.w3.org/2000/svg","path"); el.setAttribute("d",d); svg.appendChild(el);
+    let L=1; try{ L=el.getTotalLength(); }catch(e){} const pts=[]; for (let i=0;i<=15;i++){ let q={x:0,y:0}; try{ q=el.getPointAtLength(L*i/15); }catch(e){} pts.push({x:q.x/109, y:q.y/109}); } out.push(pts); svg.removeChild(el); }
+  SOP[ch]=out; return out;
+}
 function glyph(ctx, S, text, fill, strokeW, oy){
-  oy=oy||0; ctx.save(); ctx.font = `600 ${S*0.78}px "Klee One", "Hiragino Mincho ProN", serif`;
+  oy=oy||0;
+  if (SO[text]){   // draw from the stroke data, so the model matches the numbered strokes exactly
+    ctx.save(); ctx.translate(0,oy); ctx.scale(S/109,S/109); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle=fill;
+    ctx.lineWidth = 109*0.07 + (strokeW? strokeW*109/S : 0);
+    for (const d of SO[text]) ctx.stroke(new Path2D(d));
+    ctx.restore(); return;
+  }
+  ctx.save(); ctx.font = `600 ${S*0.78}px "Klee One", "Hiragino Mincho ProN", serif`;
   ctx.textAlign="center"; ctx.textBaseline="middle";
   if (strokeW){ ctx.lineWidth=strokeW; ctx.strokeStyle=fill; ctx.lineJoin="round"; ctx.strokeText(text, S/2, oy+S*0.53); }
   ctx.fillStyle=fill; ctx.fillText(text, S/2, oy+S*0.53); ctx.restore();
@@ -420,8 +446,39 @@ function drawGuide(){
     gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(1,S/300); gctx.setLineDash([S/60,S/60]);
     gctx.beginPath(); gctx.moveTo(S/2,oy); gctx.lineTo(S/2,oy+S); gctx.moveTo(0,oy+S/2); gctx.lineTo(S,oy+S/2); gctx.stroke(); gctx.restore();
     if (i>0){ gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(2,S/120); gctx.beginPath(); gctx.moveTo(0,oy); gctx.lineTo(S,oy); gctx.stroke(); gctx.restore(); }
-    if (guideOn && chars[i]){ gctx.globalAlpha=.55; glyph(gctx,S,chars[i],g,0,oy); gctx.globalAlpha=1; }
+    if (guideOn && chars[i]){ gctx.globalAlpha=.55; glyph(gctx,S,chars[i],g,0,oy); gctx.globalAlpha=1; drawNumbers(gctx,S,chars[i],oy); }
   }
+}
+// stroke numbers at the start of each stroke, like a kanji drill book
+function drawNumbers(ctx, S, ch, oy){
+  const P=soPoints(ch); if (!P) return;
+  const sea=getComputedStyle(document.documentElement).getPropertyValue("--sea").trim()||"#3A9D5D";
+  ctx.save(); ctx.font=`800 ${Math.round(S*0.075)}px ${getComputedStyle(document.body).fontFamily}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  P.forEach((pts,i)=>{ const a=pts[0], b=pts[2]; const dx=a.x-b.x, dy=a.y-b.y, L=Math.hypot(dx,dy)||1;   // nudge the number back from the stroke start
+    const x=(a.x+dx/L*0.055)*S, y=oy+(a.y+dy/L*0.055)*S;
+    ctx.beginPath(); ctx.arc(x,y,S*0.048,0,Math.PI*2); ctx.fillStyle="#fff"; ctx.fill(); ctx.lineWidth=S*0.008; ctx.strokeStyle=sea; ctx.stroke();
+    ctx.fillStyle=sea; ctx.fillText(String(i+1), x, y+S*0.004); });
+  ctx.restore();
+}
+// Macha writes the characters stroke by stroke in the boxes
+let animTimer=null;
+$("watch").onclick=()=>{ if (isQ(LIST[cur])) return; animateStrokes(); };
+function animateStrokes(){
+  if (animTimer) cancelAnimationFrame(animTimer);
+  const chars=cellChars(), S=guideC.width, N=nCells();
+  const jobs=[]; chars.forEach((ch,ci)=>{ const P=soPoints(ch); if (P) P.forEach((pts,si)=>jobs.push({ci,si,pts,ch})); });
+  if (!jobs.length){ say("I don't have the strokes for this one yet."); return; }
+  const wasGuide=guideOn; const sea=getComputedStyle(document.documentElement).getPropertyValue("--sea").trim()||"#3A9D5D";
+  drawGuide(); say("Watch the order: " + chars.join(" ") + ". Count the strokes with me!");
+  let j=0, t0=performance.now(); const per=520, gap=260;
+  function frame(now){
+    const job=jobs[j]; const k=Math.min(1,(now-t0)/per);
+    const oy=job.ci*S; gctx.save(); gctx.strokeStyle=sea; gctx.lineWidth=S*0.07; gctx.lineCap="round"; gctx.lineJoin="round"; gctx.beginPath();
+    const n=Math.max(2,Math.round(1+k*15)); job.pts.slice(0,n).forEach((p,i)=>{ if (i===0) gctx.moveTo(p.x*S,oy+p.y*S); else gctx.lineTo(p.x*S,oy+p.y*S); }); gctx.stroke(); gctx.restore();
+    if (k>=1){ j++; if (j>=jobs.length){ animTimer=null; setTimeout(()=>{ drawGuide(); }, 900); say("Now you try. Same order!"); return; } t0=now+gap; }
+    animTimer=requestAnimationFrame(frame);
+  }
+  animTimer=requestAnimationFrame(frame);
 }
 function markCells(bad){ sq.querySelectorAll(".cellfail").forEach(e=>e.remove()); const N=nCells(); for (const i of bad){ const d=document.createElement("div"); d.className="cellfail"; d.style.top=(100*i/N)+"%"; d.style.height=(100/N)+"%"; sq.appendChild(d); } }
 
@@ -504,9 +561,24 @@ function scoreCell(ch, list){
   const n=strokesOf(ch); let sd=0, pen=0;
   if (n){ sd=list.length-n; pen=Math.min(20, Math.abs(sd)*(n>=10?3:8)); if (n>=10 && Math.abs(sd)<=2){ sd=0; pen=0; } }
   const need = n>=10?65:75;
-  return {ch, score:Math.max(0,Math.round(sh-pen)), shape:Math.round(sh), cov:cov/nRef, prec:prec/nDr, strokeDiff:sd, n, used:list.length, pen, sizeRatio, need, pass:Math.round(sh-pen)>=need, near:Math.round(sh-pen)>=need-20};
+  // stroke order and direction, from the stroke data (only when the count is about right)
+  const ord=orderCheck(ch, norm); let opn=0; if (ord){ opn=Math.min(16, (ord.wrong.length + ord.reversed.length)*8); pen+=opn; }
+  const total=Math.max(0,Math.round(sh-pen));
+  return {ch, score:total, shape:Math.round(sh), cov:cov/nRef, prec:prec/nDr, strokeDiff:sd, n, used:list.length, pen, opn, order:ord, sizeRatio, need, pass:total>=need, near:total>=need-20};
 }
 function score(){ return cellChars().map((ch,i)=>scoreCell(ch, cellStrokes(i))); }
+function resample(st, m){ const out=[]; if (st.length===1) return Array(m).fill(st[0]); let L=0; const seg=[0]; for (let i=1;i<st.length;i++){ L+=Math.hypot(st[i].x-st[i-1].x, st[i].y-st[i-1].y); seg.push(L); }
+  for (let k=0;k<m;k++){ const t=L*k/(m-1); let i=1; while (i<seg.length-1 && seg[i]<t) i++; const a=st[i-1], b=st[i], f=(seg[i]-seg[i-1])>0?(t-seg[i-1])/(seg[i]-seg[i-1]):0; out.push({x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f}); } return out; }
+function strokeDist(A,B){ const d=(P,Q)=>P.reduce((s,p)=>s+Math.min(...Q.map(q=>Math.hypot(p.x-q.x,p.y-q.y))),0)/P.length; return (d(A,B)+d(B,A))/2; }
+function orderCheck(ch, list){
+  const E=soPoints(ch); if (!E || list.length<2 || Math.abs(list.length-E.length)>1) return null;
+  const D=list.map(st=>resample(st,16)); const used=new Set(), match=[];
+  for (const d of D){ let best=-1, bd=1e9; E.forEach((e,i)=>{ if (used.has(i)) return; const v=strokeDist(d,e); if (v<bd){ bd=v; best=i; } }); if (best<0) break; used.add(best); match.push(best); }
+  const wrong=[], reversed=[];
+  for (let i=1;i<match.length;i++) if (match[i]<match[i-1]) wrong.push(i);
+  match.forEach((ei,i)=>{ const d=D[i], e=E[ei]; const s0=Math.hypot(d[0].x-e[0].x,d[0].y-e[0].y), s1=Math.hypot(d[0].x-e[15].x,d[0].y-e[15].y); const len=Math.hypot(e[0].x-e[15].x,e[0].y-e[15].y); if (len>0.12 && s1<s0*0.6) reversed.push(i); });
+  return {match, wrong, reversed};
+}
 const HI=()=>curStrokes()>=10?65:75;
 $("check").onclick=()=>{
   const k=LIST[cur];
@@ -530,6 +602,8 @@ $("check").onclick=()=>{
     if (r.strokeDiff>0) why += (why?", ":"")+`${strokesWord(r.n)} needed, you used ${strokesWord(r.used)}`;
     else if (r.strokeDiff<0) why += (why?", ":"")+`needs ${strokesWord(r.n)}`;
     if (r.sizeRatio<0.3) why += (why?", ":"")+"write it bigger";
+    if (r.order && r.order.wrong.length){ const i=r.order.wrong[0]; why += (why?", ":"")+`stroke order: your stroke ${i+1} is stroke ${r.order.match[i]+1} in the model (tap ▶ Watch)`; }
+    if (r.order && r.order.reversed.length) why += (why?", ":"")+`stroke ${r.order.reversed[0]+1} goes the other way`;
     notes.push(`${chars[i]}: ${r.shape}%${r.pen?" −"+r.pen:""} / ${r.need}%${why?" · "+why:""}`);
   });
   markCells(bad);
@@ -572,7 +646,8 @@ function show(i){
     say("Question time! Read it, then write your answer in the box. Small is okay!");
     return;
   }
-  markCells([]);
+  markCells([]); if (animTimer){ cancelAnimationFrame(animTimer); animTimer=null; }
+  [...(k[5]==="w"?k[0]:k[0])].forEach(c=>ensureSO(c));
   if (k[5]==="w"){
     chEl.textContent=k[0]; chEl.classList.add("word");
     sayEl.innerHTML = `<span class="jp">${esc(k[3])}</span><br>${esc(k[4])} · ${k[0].length} ${k[0].length>1?"letters":"letter"}`;
