@@ -110,7 +110,9 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .clock.on{border-color:var(--sea)}
 .clock.low{border-color:var(--warn)}
 .clock.low .big{color:var(--warn)}
-.clock.over{border-color:#B3261E}.clock.over .big{color:#B3261E}
+.clock.over{border-color:#B3261E}.clock.over .big{color:#B3261E;animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.clock.over .big{animation:none}}
 .clock .big{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,64px);line-height:1;letter-spacing:.04em;color:var(--sea);font-variant-numeric:tabular-nums;min-width:4.2ch}
 .clock .lbl{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em}
 .clock .steps{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -226,9 +228,9 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 </div>
 
 <div class="clock" id="clock" aria-live="off">
-  <div><div class="lbl" id="clockLbl">TODAY · 20 MIN</div><div class="big" id="clockBig">20:00</div></div>
+  <div><div class="lbl" id="clockLbl">TODAY · 25 MIN</div><div class="big" id="clockBig">25:00</div></div>
   <div class="steps" id="clockSteps"></div>
-  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 20 min</button><button type="button" id="clockNext" hidden>Next ▶</button><button type="button" id="clockReset" hidden>Reset</button></div>
+  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 25 min</button><button type="button" id="clockNext" hidden>Next ▶</button><button type="button" id="clockReset" hidden>Reset</button></div>
   <div class="bar"><i id="clockBar"></i></div>
 </div>
 <nav class="tabs" role="tablist">
@@ -910,7 +912,7 @@ const rb = t => { $("rbubble").textContent=t; };
 
 // ---------- tabs
 // ---------- the 20-minute clock: one big countdown, plus a countdown for each step of the day
-const PLAN=[{id:"read",name:"Read",tab:"read",min:9},{id:"write",name:"Write",tab:"write",min:7},{id:"kata",name:"Katakana",tab:"write",min:2},{id:"wrap",name:"Wrap up",tab:"read",min:2}];
+const PLAN=[{id:"read",name:"Read",tab:"read",min:13},{id:"write",name:"Write",tab:"write",min:7},{id:"kata",name:"Katakana",tab:"write",min:3},{id:"wrap",name:"Wrap up",tab:"read",min:2}];
 const TOTAL_MIN = PLAN.reduce((a,p)=>a+p.min,0);
 let clk = store.get("pq.clock", null);   // {start, step, stepStart, paused}
 let clkTimer=null; let clkChimed={}; 
@@ -927,14 +929,14 @@ function tick(){
   const c=$("clock"); if (!clk){ $("clockBig").textContent=fmt(TOTAL_MIN*60); $("clockLbl").textContent=`TODAY · ${TOTAL_MIN} MIN`; c.className="clock"; $("clockBar").style.width="0"; renderSteps(); return; }
   const tl=totalLeft(), sl=stepLeft(), p=PLAN[clk.step];
   $("clockBig").textContent=fmt(tl); $("clockLbl").textContent=`${p.name.toUpperCase()} · ${fmt(Math.max(0,sl))} LEFT`;
-  c.className="clock on"+(tl<=120?" low":"")+(tl<=0?" over":"");
+  c.className="clock on"+(tl<=300&&tl>180?" low":"")+(tl<=180?" over":"");
   $("clockBar").style.width=Math.min(100, 100*(1-tl/(TOTAL_MIN*60)))+"%";
   const b=document.querySelector("#st"+clk.step+" b"); if (b) b.textContent=fmt(Math.max(0,sl));
-  if (sl<=0 && !clkChimed[clk.step]){ clkChimed[clk.step]=true; ding("step"); const nx=PLAN[clk.step+1]; if (nx){ rb(`${p.name} time is up! Tap Next ▶ for ${nx.name}.`); $("clockNext").classList.add("go"); } else { rb("Time's up! Great work today. ⭐"); cheer("Time is up! Great work today!"); ding("end"); } }
-  if (tl<=0 && !clkChimed.end){ clkChimed.end=true; ding("end"); cheer("Twenty minutes done! See you tomorrow!"); }
+  if (sl<=0 && !clkChimed[clk.step]){ clkChimed[clk.step]=true; ding("step"); const nx=PLAN[clk.step+1]; if (nx){ rb(`${p.name} time is up! Tap Next ▶ for ${nx.name}.`); $("clockNext").classList.add("go"); } else { rb("Time's up! You focused for 25 minutes. ⭐"); cheer("Time is up! You focused the whole time. Great work!"); ding("end"); } }
+  if (tl<=0 && !clkChimed.end){ clkChimed.end=true; ding("end"); cheer("Twenty-five minutes done! See you tomorrow!"); }
 }
 function gotoStep(i){ if (!clk) return; clk.step=Math.min(PLAN.length-1,i); clk.stepStart=Date.now(); store.set("pq.clock",clk); clkChimed[clk.step]=false; $("clockNext").classList.remove("go"); renderSteps(); const p=PLAN[clk.step]; showTab(p.tab); rb(`${p.name}: ${p.min} minutes. Go!`); if (p.id==="kata") startKatakana(); tick(); }
-$("clockStart").onclick=()=>{ clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb(`Let's go! ${PLAN[0].name} for ${PLAN[0].min} minutes.`); cheer("Let's go! Twenty minutes starts now."); tick(); };
+$("clockStart").onclick=()=>{ clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb(`Let's go! ${PLAN[0].name} for ${PLAN[0].min} minutes.`); cheer("Let's go! Twenty-five minutes starts now."); tick(); };
 $("clockNext").onclick=()=>{ if (!clk) return; if (clk.step>=PLAN.length-1){ $("clockReset").click(); return; } gotoStep(clk.step+1); };
 $("clockReset").onclick=()=>{ clk=null; store.set("pq.clock",null); clkChimed={}; $("clockStart").hidden=false; $("clockNext").hidden=true; $("clockReset").hidden=true; $("clockNext").classList.remove("go"); tick(); };
 (function(){ if (clk && Date.now()-clk.start > 90*60*1000){ clk=null; store.set("pq.clock",null); } if (clk){ $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; } renderSteps(); tick(); clkTimer=setInterval(tick,1000); })();
