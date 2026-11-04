@@ -87,6 +87,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .grid h2{font-family:var(--display);font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.06em;font-weight:600}
 .cells{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
 .cells.words{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.cells.words button.kata{background:#E8F0FF;color:#1B5FB0}
 .cells.words button{aspect-ratio:auto;min-height:44px;font-size:clamp(14px,2vw,20px);padding:4px 6px}
 .cells button{aspect-ratio:1/1;border-radius:10px;background:var(--bg);font-family:var(--model);font-size:clamp(16px,3.2vw,26px);font-weight:600;position:relative}
 .cells button[aria-current="true"]{outline:3px solid var(--sea)}
@@ -105,6 +106,24 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .wmode span{padding:6px 16px;font-family:var(--display);font-size:14px;font-weight:600;color:var(--sea)}
 .model .say .qtext{font-family:var(--model);font-size:22px;line-height:1.6;color:var(--ink);display:block;text-align:left}
 .model .ch.q{font-size:clamp(64px,10vw,96px)}
+.clock{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;background:var(--paper);border-radius:22px;padding:10px 16px;margin:0 0 12px;border:3px solid transparent}
+.clock.on{border-color:var(--sea)}
+.clock.low{border-color:var(--warn)}
+.clock.low .big{color:var(--warn)}
+.clock.over{border-color:#B3261E}.clock.over .big{color:#B3261E}
+.clock .big{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,64px);line-height:1;letter-spacing:.04em;color:var(--sea);font-variant-numeric:tabular-nums;min-width:4.2ch}
+.clock .lbl{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em}
+.clock .steps{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.clock .st{display:flex;flex-direction:column;align-items:center;padding:6px 12px;border-radius:14px;background:var(--bg);font-size:13px;font-weight:800;color:var(--muted);min-width:76px}
+.clock .st b{font-family:var(--display);font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
+.clock .st.now{background:var(--sun);color:var(--sun-ink)}.clock .st.now b{color:var(--sun-ink)}
+.clock .st.done{opacity:.45;text-decoration:line-through}
+.clock .ctl{display:flex;gap:6px}
+.clock .ctl button{padding:10px 14px;border-radius:14px;background:var(--bg);font-size:14px;font-weight:800}
+.clock .ctl .go{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-size:16px;font-weight:700}
+.clock .bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
+.clock .bar i{display:block;height:100%;width:0;background:var(--sea);transition:width 1s linear}
+@media (max-width:700px){.clock{grid-template-columns:1fr auto}.clock .steps{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;background:var(--paper);border-radius:999px;padding:4px;width:max-content;margin:0 auto 12px}
 .tabs button{padding:8px 18px;border-radius:999px;font-family:var(--display);font-size:16px;font-weight:600;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
@@ -206,6 +225,12 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   <p class="hint">If the link only opens inside this app: copy it, open Safari, and paste it into the address bar. You need to be signed in to claude.ai in Safari.</p>
 </div>
 
+<div class="clock" id="clock" aria-live="off">
+  <div><div class="lbl" id="clockLbl">TODAY · 20 MIN</div><div class="big" id="clockBig">20:00</div></div>
+  <div class="steps" id="clockSteps"></div>
+  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 20 min</button><button type="button" id="clockNext" hidden>Next ▶</button><button type="button" id="clockReset" hidden>Reset</button></div>
+  <div class="bar"><i id="clockBar"></i></div>
+</div>
 <nav class="tabs" role="tablist">
   <button role="tab" id="tabRead" aria-selected="true" type="button">📖 Read</button>
   <button role="tab" id="tabWrite" aria-selected="false" type="button">✏️ Write</button>
@@ -622,7 +647,7 @@ $("check").onclick=()=>{
     renderStars(); renderGrid(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on");
     $("s2").className="step done";
     bubble.innerHTML = `<span class="big ok">Awesome!</span>You wrote ${k[0]} all by yourself. ⭐ Star earned. Tap Next to keep going.<br>${detail}`;
-    cheer("Awesome! You earned a star!"); markSetDone();
+    cheer("Awesome! You earned a star!"); markSetDone(); markKataDone();
   } else if (!bad.length && guideOn){
     bubble.innerHTML = `<span class="big mid">Looking good!</span>Stars are for writing without the example. Turn it off and try once more.<br>${detail}`;
     cheer("Looking good! Now try it without the example.");
@@ -650,9 +675,9 @@ function show(i){
   [...(k[5]==="w"?k[0]:k[0])].forEach(c=>ensureSO(c));
   if (k[5]==="w"){
     chEl.textContent=k[0]; chEl.classList.add("word");
-    sayEl.innerHTML = `<span class="jp">${esc(k[3])}</span><br>${esc(k[4])} · ${k[0].length} ${k[0].length>1?"letters":"letter"}`;
+    sayEl.innerHTML = k[6]==="kata" ? `<span class="jp">${esc(k[4])}</span><br>katakana · ${esc(k[3])} · ${k[0].length} letters` : `<span class="jp">${esc(k[3])}</span><br>${esc(k[4])} · ${k[0].length} ${k[0].length>1?"letters":"letter"}`;
     setStep(1); redraw(); renderGrid(); size();
-    say(`${k[0]} (${k[3]}) means "${k[4]}". Trace the gray letters in the boxes from top to bottom, then tap Check!`); return;
+    say(k[6]==="kata" ? `Daily Katakana: "${k[4]}" is ${k[0]} in Japanese. Say it: ${k[3]}. Trace it, then write it yourself!` : `${k[0]} (${k[3]}) means "${k[4]}". Trace the gray letters in the boxes from top to bottom, then tap Check!`); return;
   }
   chEl.classList.remove("word"); chEl.textContent=k[0];
   const jp = k[2].split("").map(c=>c===k[0]?`<b>${c}</b>`:esc(c)).join("");
@@ -662,6 +687,22 @@ function show(i){
 }
 // ---- Write tab modes: words from the story you read, or the kana chart
 const WORDS_PER_DAY = 5;
+// Daily Katakana: words the girls already know in English, two a day, in the same vertical boxes
+const KATA = [["ハワイ","Hawaii"],["アメリカ","America"],["パン","bread"],["バス","bus"],["ケーキ","cake"],["ジュース","juice"],["ミルク","milk"],["アイスクリーム","ice cream"],["パイナップル","pineapple"],["バナナ","banana"],
+ ["トマト","tomato"],["サラダ","salad"],["ピザ","pizza"],["ハンバーガー","hamburger"],["ホットドッグ","hot dog"],["チョコレート","chocolate"],["クッキー","cookie"],["ドーナツ","donut"],["サンドイッチ","sandwich"],["スープ","soup"],
+ ["テレビ","TV"],["タブレット","tablet"],["ゲーム","game"],["カメラ","camera"],["ピアノ","piano"],["ギター","guitar"],["ロボット","robot"],["ロケット","rocket"],["ボール","ball"],["サッカー","soccer"],
+ ["バスケットボール","basketball"],["テニス","tennis"],["プール","pool"],["ビーチ","beach"],["サーフィン","surfing"],["キャンプ","camp"],["パーク","park"],["ホテル","hotel"],["スーパー","supermarket"],["レストラン","restaurant"],
+ ["ドア","door"],["テーブル","table"],["ベッド","bed"],["ソファ","sofa"],["カーテン","curtain"],["ノート","notebook"],["ペン","pen"],["ランドセル","school backpack"],["シャツ","shirt"],["スカート","skirt"],
+ ["ズボン","pants"],["スニーカー","sneakers"],["ジャケット","jacket"],["ポケット","pocket"],["リボン","ribbon"],["ペット","pet"],["ライオン","lion"],["パンダ","panda"],["ペンギン","penguin"],["コアラ","koala"],
+ ["クリスマス","Christmas"],["バレンタイン","Valentine"],["ハロウィン","Halloween"],["パーティー","party"],["プレゼント","present"],["バースデー","birthday"],["ママ","mom"],["パパ","dad"],["ファミリー","family"],["フレンド","friend"],
+ ["ティーチャー","teacher"],["スクール","school"],["クラス","class"],["テスト","test"],["エネルギー","energy"],["ウィークエンド","weekend"],["チーム","team"],["キャプテン","captain"],["チャンス","chance"],["ニュース","news"]];
+function dailyKatakana(){
+  const key="kata.day"; let st=rstore.get(key,{date:null,start:0,done:false});
+  if (st.date!==today()){ if (st.done) st.start=(st.start+2)%KATA.length; st.date=today(); st.done=false; rstore.set(key,st); }
+  return [0,1].map(i=>{ const w=KATA[(st.start+i)%KATA.length]; return [w[0],0,w[0],kataToHira(w[0]),w[1],"w","kata"]; });
+}
+function markKataDone(){ const kw=LIST.filter(k=>k[6]==="kata"); const done=pdata().done; if (kw.length && kw.every(k=>done[k[0]])){ const st=rstore.get("kata.day",{date:today(),start:0,done:false}); st.done=true; rstore.set("kata.day",st); } }
+function startKatakana(){ if ($("writeTab").hidden) showTab("write"); const i=LIST.findIndex(k=>k[6]==="kata"); if (i>=0) show(i); rb("Daily Katakana! You know these words in English. Write them in katakana!"); }
 // every word in the story worth writing: kanji words and katakana words, in story order
 function storyWords(P){
   const out=[], seen=new Set();
@@ -680,11 +721,12 @@ function buildStoryList(){
   const out=[]; for (let i=0;i<Math.min(WORDS_PER_DAY,all.length);i++) out.push(all[(st.start+i)%all.length]);
   const dayN=Math.floor(st.start/WORDS_PER_DAY)+1, days=Math.ceil(all.length/WORDS_PER_DAY);
   $("wmInfo").textContent=`Today's words · set ${dayN} of ${days}`;
+  for (const k of dailyKatakana()) out.push(k);
   if (P.write && P.write.q) out.push(["？", 0, P.write.q, "", "question", "q"]);
   return out;
 }
 function markSetDone(){
-  const P=rp; if (!P) return; const done=pdata().done; const words=LIST.filter(k=>k[5]==="w");
+  const P=rp; if (!P) return; const done=pdata().done; const words=LIST.filter(k=>k[5]==="w" && k[6]!=="kata");
   if (words.length && words.every(k=>done[k[0]])){ const key="wset."+P.id; const st=rstore.get(key,{date:today(),start:0,done:false}); if (!st.done){ st.done=true; rstore.set(key,st); setTimeout(()=>{ bubble.innerHTML=`<span class="big ok">All of today's words done! 🎉</span>Tomorrow there will be new words from the story. You can still do the ？ question now.`; cheer("All of today's words are done! New words tomorrow."); },1200); } }
 }
 function setWMode(m){
@@ -698,7 +740,7 @@ $("prev").onclick=()=>show(cur-1); $("next").onclick=()=>show(cur+1);
 function renderGrid(){
   const g=$("cells"); g.innerHTML=""; const done=pdata().done; g.classList.toggle("words", wmode==="story");
   if (wmode==="story"){
-    LIST.forEach((k,idx)=>{ const b=document.createElement("button"); b.type="button"; b.lang="ja"; b.textContent=k[0]; const key=isQ(k)?"q:"+(rp?rp.id:"x"):k[0]; if (done[key]) b.classList.add("done"); b.setAttribute("aria-current", idx===cur); b.onclick=()=>show(idx); g.appendChild(b); });
+    LIST.forEach((k,idx)=>{ const b=document.createElement("button"); b.type="button"; b.lang="ja"; b.textContent=k[0]; if (k[6]==="kata"){ b.classList.add("kata"); b.title="Daily Katakana"; } const key=isQ(k)?"q:"+(rp?rp.id:"x"):k[0]; if (done[key]) b.classList.add("done"); b.setAttribute("aria-current", idx===cur); b.onclick=()=>show(idx); g.appendChild(b); });
     return;
   }
   for (let r=0;r<5;r++) for (let c=ROWS.length-1;c>=0;c--){
@@ -867,6 +909,36 @@ function stopWordListen(){ if (wrec){ try{ wrec.onend=null; wrec.abort(); }catch
 const rb = t => { $("rbubble").textContent=t; };
 
 // ---------- tabs
+// ---------- the 20-minute clock: one big countdown, plus a countdown for each step of the day
+const PLAN=[{id:"read",name:"Read",tab:"read",min:9},{id:"write",name:"Write",tab:"write",min:7},{id:"kata",name:"Katakana",tab:"write",min:2},{id:"wrap",name:"Wrap up",tab:"read",min:2}];
+const TOTAL_MIN = PLAN.reduce((a,p)=>a+p.min,0);
+let clk = store.get("pq.clock", null);   // {start, step, stepStart, paused}
+let clkTimer=null; let clkChimed={}; 
+function fmt(sec){ sec=Math.max(0,Math.round(sec)); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
+function renderSteps(){
+  const box=$("clockSteps"); box.innerHTML="";
+  PLAN.forEach((p,i)=>{ const d=document.createElement("div"); d.className="st"+(clk&&i===clk.step?" now":"")+(clk&&i<clk.step?" done":""); d.id="st"+i;
+    d.innerHTML=`<span>${p.name}</span><b>${clk&&i===clk.step?fmt(stepLeft()):p.min+":00"}</b>`; d.onclick=()=>{ if (clk) gotoStep(i); }; box.appendChild(d); });
+}
+function stepLeft(){ if (!clk) return 0; return PLAN[clk.step].min*60 - (Date.now()-clk.stepStart)/1000; }
+function totalLeft(){ if (!clk) return TOTAL_MIN*60; return TOTAL_MIN*60 - (Date.now()-clk.start)/1000; }
+function ding(kind){ try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const notes=kind==="end"?[660,880,1100]:[880,660]; notes.forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=f; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,ac.currentTime+i*0.18); g.gain.exponentialRampToValueAtTime(0.3,ac.currentTime+i*0.18+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+i*0.18+0.17); o.start(ac.currentTime+i*0.18); o.stop(ac.currentTime+i*0.18+0.2); }); }catch(e){} }
+function tick(){
+  const c=$("clock"); if (!clk){ $("clockBig").textContent=fmt(TOTAL_MIN*60); $("clockLbl").textContent=`TODAY · ${TOTAL_MIN} MIN`; c.className="clock"; $("clockBar").style.width="0"; renderSteps(); return; }
+  const tl=totalLeft(), sl=stepLeft(), p=PLAN[clk.step];
+  $("clockBig").textContent=fmt(tl); $("clockLbl").textContent=`${p.name.toUpperCase()} · ${fmt(Math.max(0,sl))} LEFT`;
+  c.className="clock on"+(tl<=120?" low":"")+(tl<=0?" over":"");
+  $("clockBar").style.width=Math.min(100, 100*(1-tl/(TOTAL_MIN*60)))+"%";
+  const b=document.querySelector("#st"+clk.step+" b"); if (b) b.textContent=fmt(Math.max(0,sl));
+  if (sl<=0 && !clkChimed[clk.step]){ clkChimed[clk.step]=true; ding("step"); const nx=PLAN[clk.step+1]; if (nx){ rb(`${p.name} time is up! Tap Next ▶ for ${nx.name}.`); $("clockNext").classList.add("go"); } else { rb("Time's up! Great work today. ⭐"); cheer("Time is up! Great work today!"); ding("end"); } }
+  if (tl<=0 && !clkChimed.end){ clkChimed.end=true; ding("end"); cheer("Twenty minutes done! See you tomorrow!"); }
+}
+function gotoStep(i){ if (!clk) return; clk.step=Math.min(PLAN.length-1,i); clk.stepStart=Date.now(); store.set("pq.clock",clk); clkChimed[clk.step]=false; $("clockNext").classList.remove("go"); renderSteps(); const p=PLAN[clk.step]; showTab(p.tab); rb(`${p.name}: ${p.min} minutes. Go!`); if (p.id==="kata") startKatakana(); tick(); }
+$("clockStart").onclick=()=>{ clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb(`Let's go! ${PLAN[0].name} for ${PLAN[0].min} minutes.`); cheer("Let's go! Twenty minutes starts now."); tick(); };
+$("clockNext").onclick=()=>{ if (!clk) return; if (clk.step>=PLAN.length-1){ $("clockReset").click(); return; } gotoStep(clk.step+1); };
+$("clockReset").onclick=()=>{ clk=null; store.set("pq.clock",null); clkChimed={}; $("clockStart").hidden=false; $("clockNext").hidden=true; $("clockReset").hidden=true; $("clockNext").classList.remove("go"); tick(); };
+(function(){ if (clk && Date.now()-clk.start > 90*60*1000){ clk=null; store.set("pq.clock",null); } if (clk){ $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; } renderSteps(); tick(); clkTimer=setInterval(tick,1000); })();
+
 function showTab(name){
   const w = name==="write";
   $("writeTab").hidden=!w; $("readTab").hidden=w;
