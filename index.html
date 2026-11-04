@@ -84,6 +84,8 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .grid{margin-top:16px;background:var(--paper);border-radius:22px;padding:14px}
 .grid h2{font-family:var(--display);font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.06em;font-weight:600}
 .cells{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
+.cells.words{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.cells.words button{aspect-ratio:auto;min-height:44px;font-size:clamp(14px,2vw,20px);padding:4px 6px}
 .cells button{aspect-ratio:1/1;border-radius:10px;background:var(--bg);font-family:var(--model);font-size:clamp(16px,3.2vw,26px);font-weight:600;position:relative}
 .cells button[aria-current="true"]{outline:3px solid var(--sea)}
 .cells button.done{background:var(--sun);color:var(--sun-ink)}
@@ -353,6 +355,11 @@ let LIST = KANA.filter(Boolean); const KANALIST = LIST; let wmode = "kana";
 const STROKES = {日:4,曜:18,父:4,海:9,空:8,青:8,白:5,雲:12,一:1,小:3,魚:11,足:7,下:3,通:10,見:7,大:3,声:7,言:7,手:4,帰:10,母:5,話:13,考:6,夏:10,休:6,朝:12,兄:5,駅:14,向:6,遠:13,町:7,来:7,電:13,車:7,十:2,分:4,何:7,度:9,時:10,計:9,自:6,動:11,前:9,行:6,開:12,荷:10,物:8,持:9,笑:10,重:9,受:8,取:8,元:4,気:6,顔:18,去:5,年:6,約:9,束:7};
 Object.assign(STROKES,{犬:4,木:4,花:7,上:3,水:4,三:3,月:4,山:3,本:5,昼:9,図:7,書:10,館:16,係:9,決:7,教:11,室:9,生:5,探:11,番:12,人:2,強:11,雨:8,川:3,増:14,速:10,流:10,友:4,達:12,橋:16,立:5,止:4,別:7,道:12,学:8,校:10,着:12,安:6,全:6,正:5,判:7,断:11,先:5,週:11,授:11,業:13,地:6,球:11,未:5,意:13,発:9,表:8,私:7,減:12,員:10,努:7,続:13,切:4,述:8,例:8,店:8,使:8,役:7,思:9,黒:11,板:8,身:7,近:7,世:5,界:9,変:9,挙:10,回:6,路:13,子:3,力:2,太:4,郎:9,少:4,二:2,高:10,読:7,借:10,町:7,日:4});
 const isQ = k => k && k[5]==="q";
+const KSTR = {}; for (const k of KANA) if (k) KSTR[k[0]]=k[1];
+let ci = 0;   // which character of the current word (story mode)
+function curWord(){ return LIST[cur]; }
+function curChar(){ const k=LIST[cur]; return k[5]==="w" ? k[0][ci] : k[0]; }
+function curStrokes(){ const c=curChar(); return STROKES[c] || KSTR[c] || 0; }
 const ROWS = []; for (let i=0;i<KANA.length;i+=5) ROWS.push(KANA.slice(i,i+5));
 
 // ---- state
@@ -401,14 +408,14 @@ function drawGuide(){
   const line=getComputedStyle(document.documentElement).getPropertyValue("--line").trim()||"#C9D8E4";
   gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(1,S/300); gctx.setLineDash([S/60,S/60]);
   gctx.beginPath(); gctx.moveTo(S/2,0); gctx.lineTo(S/2,S); gctx.moveTo(0,S/2); gctx.lineTo(S,S/2); gctx.stroke(); gctx.restore();
-  if (guideOn && !isQ(LIST[cur])){ const g=getComputedStyle(document.documentElement).getPropertyValue("--guide").trim()||"#B9CAD9"; gctx.globalAlpha=.55; glyph(gctx,S,LIST[cur][0],g,0); gctx.globalAlpha=1; }
+  if (guideOn && !isQ(LIST[cur])){ const g=getComputedStyle(document.documentElement).getPropertyValue("--guide").trim()||"#B9CAD9"; gctx.globalAlpha=.55; glyph(gctx,S,curChar(),g,0); gctx.globalAlpha=1; }
 }
 
 // ---- drawing (strokes stored normalized 0..1 with pressure)
-function renderStrokes(ctx, S, widthMul){
-  ctx.clearRect(0,0,S,S); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1F3550";
+function renderStrokes(ctx, S, widthMul, list){
+  list=list||strokes; ctx.clearRect(0,0,S,S); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1F3550";
   const base=S*0.045*widthMul;
-  for (const st of strokes){
+  for (const st of list){
     if (st.length===1){ ctx.beginPath(); ctx.arc(st[0].x*S, st[0].y*S, base*0.5*(0.6+st[0].p*0.8), 0, Math.PI*2); ctx.fillStyle="#1F3550"; ctx.fill(); continue; }
     for (let i=1;i<st.length;i++){
       const a=st[i-1], b=st[i]; ctx.lineWidth = base*(0.6+((a.p+b.p)/2)*0.8);
@@ -447,25 +454,38 @@ function setStep(n){
 
 // ---- scoring: compare the drawn mask with the model glyph mask (both dilated)
 function mask(S, paint){ const c=document.createElement("canvas"); c.width=c.height=S; const x=c.getContext("2d"); paint(x,S); return x.getImageData(0,0,S,S).data; }
+function bbox(pts){ let x0=1,y0=1,x1=0,y1=0; for (const p of pts){ if (p.x<x0) x0=p.x; if (p.y<y0) y0=p.y; if (p.x>x1) x1=p.x; if (p.y>y1) y1=p.y; } return {x0,y0,x1,y1,w:Math.max(1e-3,x1-x0),h:Math.max(1e-3,y1-y0)}; }
+function glyphBox(S, ch){
+  const m=mask(S,(x)=>glyph(x,S,ch,"#000",0)); let x0=S,y0=S,x1=0,y1=0;
+  for (let i=3;i<m.length;i+=4) if (m[i]>100){ const px=(i>>2)%S, py=Math.floor((i>>2)/S); if (px<x0) x0=px; if (px>x1) x1=px; if (py<y0) y0=py; if (py>y1) y1=py; }
+  return {x0:x0/S,y0:y0/S,x1:x1/S,y1:y1/S,w:Math.max(1e-3,(x1-x0)/S),h:Math.max(1e-3,(y1-y0)/S)};
+}
+// the child's writing is compared by SHAPE: it is moved and resized to sit where the model letter sits, then overlapped
 function score(){
-  const S=240;
-  const ref  = mask(S,(x)=>glyph(x,S,LIST[cur][0],"#000",0));
-  const refD = mask(S,(x)=>glyph(x,S,LIST[cur][0],"#000",S*0.10));
-  const dr   = mask(S,(x)=>renderStrokes(x,S,1));
-  const drD  = mask(S,(x)=>renderStrokes(x,S,3));
+  const S=240, ch=curChar();
+  const all=strokes.flat(); if (!all.length) return {empty:true};
+  const gb=glyphBox(S,ch), db=bbox(all);
+  const sizeRatio = Math.max(db.w/gb.w, db.h/gb.h);          // 1 = same size as the model
+  let sc = Math.min(gb.w/db.w, gb.h/db.h); sc=Math.max(0.5, Math.min(2.5, sc));
+  const cx=(db.x0+db.x1)/2, cy=(db.y0+db.y1)/2, gx=(gb.x0+gb.x1)/2, gy=(gb.y0+gb.y1)/2;
+  const norm = strokes.map(st=>st.map(p=>({x:gx+(p.x-cx)*sc, y:gy+(p.y-cy)*sc, p:p.p})));
+  const ref  = mask(S,(x)=>glyph(x,S,ch,"#000",0));
+  const refD = mask(S,(x)=>glyph(x,S,ch,"#000",S*0.10));
+  const dr   = mask(S,(x)=>renderStrokes(x,S,1,norm));
+  const drD  = mask(S,(x)=>renderStrokes(x,S,3,norm));
   let nRef=0,nDr=0,cov=0,prec=0;
   for (let i=3;i<ref.length;i+=4){
     const r=ref[i]>100, rd=refD[i]>100, d=dr[i]>100, dd=drD[i]>100;
     if (r){ nRef++; if (dd) cov++; }
     if (d){ nDr++; if (rd) prec++; }
   }
-  if (nDr < nRef*0.08) return {empty:true};
-  let s = 100*(0.55*cov/nRef + 0.45*prec/nDr);
-  const n=LIST[cur][1]; let sd=0;
-  if (n){ sd=strokes.length-n; s -= Math.min(25, Math.abs(sd)*(n>=10?4:10)); if (n>=10 && Math.abs(sd)<=2) sd=0; }
-  return {score:Math.max(0,Math.round(s)), cov:cov/nRef, prec:prec/nDr, strokeDiff:sd};
+  if (nDr < nRef*0.05) return {empty:true};
+  let sh = 100*(0.55*cov/nRef + 0.45*prec/nDr);
+  const n=curStrokes(); let sd=0, pen=0;
+  if (n){ sd=strokes.length-n; pen=Math.min(20, Math.abs(sd)*(n>=10?3:8)); if (n>=10 && Math.abs(sd)<=2){ sd=0; pen=0; } }
+  return {score:Math.max(0,Math.round(sh-pen)), shape:Math.round(sh), cov:cov/nRef, prec:prec/nDr, strokeDiff:sd, pen, sizeRatio};
 }
-const HI=()=>LIST[cur][1]>=10?65:75;
+const HI=()=>curStrokes()>=10?65:75;
 $("check").onclick=()=>{
   const k=LIST[cur];
   if (isQ(k)){
@@ -476,25 +496,32 @@ $("check").onclick=()=>{
     if (!d.done[key]){ d.done[key]=true; d.stars=(d.stars||0)+1; savep(d); renderStars(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on"); renderGrid(); }
     return;
   }
-  const r=score();
+  const r=score(); const ch=curChar(), n=curStrokes(), word=k[5]==="w";
   if (r.empty){ say("Nothing here yet. Write the letter with your pencil, then tap Check!"); return; }
   let mark, cls, msg;
   if (r.score>=HI()){ mark="Awesome!"; cls="ok"; msg="That looks great."; }
-  else if (r.score>=HI()-20){ mark="Nice!"; cls="mid"; msg = r.cov<0.7 ? "Try writing it a little bigger." : "Try to match the shape a bit more."; }
-  else { mark="Almost!"; cls="low"; msg="Go slowly and follow the shape."; }
-  const strokesWord = n => n===1 ? "1 stroke" : n+" strokes";
-  if (r.strokeDiff>0) msg += ` ${k[0]} is written with ${strokesWord(k[1])}, you used ${strokesWord(strokes.length)}.`;
-  else if (r.strokeDiff<0) msg += ` ${k[0]} needs ${strokesWord(k[1])}.`;
+  else if (r.score>=HI()-20){ mark="Nice!"; cls="mid"; msg = r.cov<0.7 ? "Part of the shape is missing." : "The shape is a little off."; }
+  else { mark="Almost!"; cls="low"; msg = r.cov<0.6 ? "A big part of the shape is missing." : "The shape is different from the model."; }
+  const strokesWord = m => m===1 ? "1 stroke" : m+" strokes";
+  if (r.strokeDiff>0) msg += ` ${ch} is written with ${strokesWord(n)}, you used ${strokesWord(strokes.length)}.`;
+  else if (r.strokeDiff<0) msg += ` ${ch} needs ${strokesWord(n)}.`;
+  if (r.sizeRatio<0.3) msg += " Also try writing it bigger.";
+  const why = `<span class="hint">Shape match ${r.shape}%${r.pen?" · stroke count −"+r.pen:""} · need ${HI()}%</span>`;
   const pass = r.score>=HI() || (step===1 && r.score>=HI()-20);
   if (step===1 && pass){
-    bubble.innerHTML = `<span class="big ok">Traced!</span>Now the example is gone. Write ${k[0]} by yourself from memory, then tap Check!`;
+    bubble.innerHTML = `<span class="big ok">Traced!</span>Now the example is gone. Write ${ch} by yourself from memory, then tap Check!`;
     cheer("Nice tracing! Now write it by yourself.");
     strokes=[]; setStep(2); redraw(); return;
   }
   if (step===2 && r.score<HI()-20) msg += " You can turn the example back on if you need a peek.";
-  bubble.innerHTML = `<span class="big ${cls}">${mark}</span>${esc(msg)}`;
+  bubble.innerHTML = `<span class="big ${cls}">${mark}</span>${esc(msg)}<br>${why}`;
   cheer(mark + " " + msg);
   if (step===2 && r.score>=HI() && !guideOn){
+    if (word && ci < k[0].length-1){   // next character of the word
+      ci++; strokes=[]; showChar(); 
+      bubble.innerHTML = `<span class="big ok">${ch} done!</span>Next: ${curChar()} (${ci+1} of ${k[0].length} in ${k[0]}).`;
+      cheer(`Good! Next letter.`); return;
+    }
     const d=pdata(); d.done[k[0]]=true; d.stars=(d.stars||0)+1; savep(d);
     renderStars(); renderGrid(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on");
     $("s2").className="step done";
@@ -519,17 +546,27 @@ function show(i){
     say("Question time! Read it, then write your answer in the box. Small is okay!");
     return;
   }
+  if (k[5]==="w"){ ci=0; showChar(); renderGrid();
+    say(`${k[0]} (${k[3]}) means "${k[4]}". ${k[0].length>1?"Write it one letter at a time. ":""}Trace the gray ${curChar()}, then tap Check!`); return; }
   chEl.textContent=k[0];
   const jp = k[2].split("").map(c=>c===k[0]?`<b>${c}</b>`:esc(c)).join("");
-  sayEl.innerHTML = `<span class="jp">${jp}</span><br>${wmode==="story"? esc(k[3])+" · "+esc(k[4]) : esc(k[3])+" · "+esc(k[4])}`;
+  sayEl.innerHTML = `<span class="jp">${jp}</span><br>${esc(k[3])} · ${esc(k[4])}`;
   setStep(1); redraw(); renderGrid();
-  say(wmode==="story" ? `This is ${k[0]}, from the word ${k[2]} (${k[3]}). Trace the gray ${k[0]}, then tap Check!` : `This is ${k[0]}, it sounds like "${romajiOf(k)}". Trace the gray letter, then tap Check!`);
+  say(`This is ${k[0]}, it sounds like "${romajiOf(k)}". Trace the gray letter, then tap Check!`);
+}
+// one character of a story word: kanji get a trace step first, kana go straight to writing (example can be turned on)
+function showChar(){
+  const k=LIST[cur], ch=curChar();
+  chEl.textContent=ch;
+  const jp = [...k[0]].map((c,i)=>i===ci?`<b>${esc(c)}</b>`:esc(c)).join("");
+  sayEl.innerHTML = `<span class="jp">${jp}</span><br>${esc(k[3])} · ${esc(k[4])}${k[0].length>1?` · ${ci+1}/${k[0].length}`:""}`;
+  strokes=[]; setStep(/[一-鿿]/.test(ch) ? 1 : 2); redraw();
 }
 // ---- Write tab modes: words from the story you read, or the kana chart
 function buildStoryList(){
   const ps=(typeof visiblePassages==="function")?visiblePassages():[]; const P=(typeof rp!=="undefined"&&rp)?rp:ps[0]; const out=[]; const seen=new Set();
   if (!P) return out;
-  for (const t of P.tokens){ if (typeof t==="string") continue; for (const c of t[0]) if (/[一-鿿]/.test(c) && !seen.has(c)){ seen.add(c); out.push([c, STROKES[c]||0, t[0], t[1], t[2], "w"]); } }
+  for (const t of P.tokens){ if (typeof t==="string") continue; if (!/[一-鿿]/.test(t[0]) || seen.has(t[0])) continue; seen.add(t[0]); out.push([t[0], 0, t[0], t[1], t[2], "w"]); }
   if (P.write && P.write.q) out.push(["？", 0, P.write.q, "", "question", "q"]);
   return out;
 }
@@ -538,14 +575,14 @@ function setWMode(m){
   if (m==="story"){ LIST=buildStoryList(); if (!LIST.length){ LIST=KANALIST; wmode="kana"; } } else LIST=KANALIST;
   $("wmStory").setAttribute("aria-pressed", wmode==="story"); $("wmKana").setAttribute("aria-pressed", wmode==="kana");
   const P=(typeof rp!=="undefined"&&rp)?rp:null;
-  $("gridTitle").textContent = wmode==="story" ? "WORDS FROM THE STORY"+(P?" · "+P.title:"") : "YOUR KANA MAP · 46 letters";
+  $("gridTitle").textContent = wmode==="story" ? "WORDS FROM THE STORY · tap a word"+(P?" · "+P.title:"") : "YOUR KANA MAP · 46 letters";
   show(0);
 }
 $("wmStory").onclick=()=>setWMode("story"); $("wmKana").onclick=()=>setWMode("kana");
 function romajiOf(k){ const map={"あ":"a","い":"i","う":"u","え":"e","お":"o","か":"ka","き":"ki","く":"ku","け":"ke","こ":"ko","さ":"sa","し":"shi","す":"su","せ":"se","そ":"so","た":"ta","ち":"chi","つ":"tsu","て":"te","と":"to","な":"na","に":"ni","ぬ":"nu","ね":"ne","の":"no","は":"ha","ひ":"hi","ふ":"fu","へ":"he","ほ":"ho","ま":"ma","み":"mi","む":"mu","め":"me","も":"mo","や":"ya","ゆ":"yu","よ":"yo","ら":"ra","り":"ri","る":"ru","れ":"re","ろ":"ro","わ":"wa","を":"wo","ん":"n"}; return map[k[0]]||""; }
 $("prev").onclick=()=>show(cur-1); $("next").onclick=()=>show(cur+1);
 function renderGrid(){
-  const g=$("cells"); g.innerHTML=""; const done=pdata().done;
+  const g=$("cells"); g.innerHTML=""; const done=pdata().done; g.classList.toggle("words", wmode==="story");
   if (wmode==="story"){
     LIST.forEach((k,idx)=>{ const b=document.createElement("button"); b.type="button"; b.lang="ja"; b.textContent=k[0]; const key=isQ(k)?"q:"+(rp?rp.id:"x"):k[0]; if (done[key]) b.classList.add("done"); b.setAttribute("aria-current", idx===cur); b.onclick=()=>show(idx); g.appendChild(b); });
     return;
@@ -582,7 +619,7 @@ function cheer(text){
 }
 $("speak").onclick=()=>{
   if (!("speechSynthesis" in window)) { say("This device can't read aloud here."); return; }
-  const k=LIST[cur]; const text= isQ(k) ? k[2] : (k[5]==="w" ? `${k[3]}。` : `${k[0]}。${k[2]}。`);
+  const k=LIST[cur]; const text= isQ(k) ? k[2] : (k[5]==="w" ? `${k[0]}。` : `${k[0]}。${k[2]}。`);
   loadVoices();
   if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); setTimeout(()=>speakNow(text), 120); }
   else speakNow(text);
@@ -604,7 +641,7 @@ $("ai").onclick=async ()=>{
   const c=document.createElement("canvas"); c.width=c.height=512; const x=c.getContext("2d");
   x.fillStyle="#fff"; x.fillRect(0,0,512,512); renderStrokes(x,512,1);
   const blob = await new Promise(res=>c.toBlob(res,"image/png"));
-  const prompt = `This image shows the hiragana character "${k[0]}" (${romajiOf(k)}) handwritten on an iPad with a pencil by a child aged 8 to 10 who reads English but is learning Japanese. ${guideOn?"A faint example was visible while writing.":"No example was visible; written from memory."} The dark navy lines on white are the child's writing. Judge whether it is readable as "${k[0]}", what is good about the shape, and ONE thing to fix. Reply with only this JSON: {"readable": true or false, "praise": "one short friendly sentence in simple English, max 12 words", "tip": "one specific fix in simple English, max 15 words"}`;
+  const prompt = `This image shows the Japanese character "${curChar()}"${k[5]==="w"?` (from the word ${k[0]}, ${k[3]})`:` (${romajiOf(k)})`} handwritten on an iPad with a pencil by a child aged 8 to 10 who reads English but is learning Japanese. ${guideOn?"A faint example was visible while writing.":"No example was visible; written from memory."} The dark navy lines on white are the child's writing. Judge whether it is readable as "${k[0]}", what is good about the shape, and ONE thing to fix. Reply with only this JSON: {"readable": true or false, "praise": "one short friendly sentence in simple English, max 12 words", "tip": "one specific fix in simple English, max 15 words"}`;
   try{
     const r = await live.json(prompt, {images: blob, modelTier:"default"});
     const ok = !!r.readable;
