@@ -519,7 +519,7 @@ $("check").onclick=()=>{
   if (step===2 && r.score>=HI() && !guideOn){
     if (word && ci < k[0].length-1){   // next character of the word
       ci++; strokes=[]; showChar(); 
-      bubble.innerHTML = `<span class="big ok">${ch} done!</span>Next: ${curChar()} (${ci+1} of ${k[0].length} in ${k[0]}).`;
+      bubble.innerHTML = `<span class="big ok">${ch} done!</span>Next: ${curChar()} (${ci+1} of ${k[0].length} in ${k[0]}). ${step===1?"Trace it first.":"Write it yourself."}`;
       cheer(`Good! Next letter.`); return;
     }
     const d=pdata(); d.done[k[0]]=true; d.stars=(d.stars||0)+1; savep(d);
@@ -547,7 +547,7 @@ function show(i){
     return;
   }
   if (k[5]==="w"){ ci=0; showChar(); renderGrid();
-    say(`${k[0]} (${k[3]}) means "${k[4]}". ${k[0].length>1?"Write it one letter at a time. ":""}Trace the gray ${curChar()}, then tap Check!`); return; }
+    say(`${k[0]} (${k[3]}) means "${k[4]}". ${k[0].length>1?"Write it one letter at a time. ":""}${step===1?`Trace the gray ${curChar()}, then tap Check!`:`Write ${curChar()} yourself, then tap Check! Tap 👀 Example if you need a peek.`}`); return; }
   chEl.textContent=k[0];
   const jp = k[2].split("").map(c=>c===k[0]?`<b>${c}</b>`:esc(c)).join("");
   sayEl.innerHTML = `<span class="jp">${jp}</span><br>${esc(k[3])} · ${esc(k[4])}`;
