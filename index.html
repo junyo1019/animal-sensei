@@ -935,13 +935,9 @@ $("doneRead").onclick=()=>{
     phase="fix"; runFinal=false;
     msg += `<br>🔴 ${reds.length} red word${reds.length>1?"s":""}: ${reds.map(o=>o.s).join("、")}<br><b>Tap each red word. I'll read it, then you say it. When they're all green, we do the blue run!</b>`;
     rb("Tap a red word. I'll read it, then you say it!"); cheer("Tap each red word. I will read it, then you say it.");
-  } else if (!finalRun){
-    phase="final";
-    msg += `<br><b>All green! 🟢</b> Now read it once more from the top without stopping. No red, and it all turns blue 💙`;
-    rb("All green! Tap 💙 Final run and read it with no stops!"); cheer("All green! Now read it once more without stopping, for blue.");
-  } else {
+  } else {   // no red at all, first try or final run: blue
     pass=true; phase="read"; rTok.forEach(o=>setSt(o,"blue"));
-    msg += `<br><b>All blue! Perfect run! 💙📖⭐</b>`;
+    msg += finalRun ? `<br><b>All blue! Perfect run! 💙📖⭐</b>` : `<br><b>All blue on the first try! 💙📖⭐</b>`;
   }
   setStartLabel();
   const stumbleWords=reds.map(o=>o.s);
