@@ -284,7 +284,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
         <button class="chip" id="shadow" type="button">🐼 Macha reads first</button>
         <button class="chip go" id="startRead" type="button">🎤 Start reading</button>
         <button class="chip go" id="doneRead" type="button" hidden>✅ Done</button>
-        <button class="chip" id="parentMode" type="button" aria-pressed="false">👂 Grown-up is listening</button>
+        <button class="chip" id="parentMode" type="button" aria-pressed="false">👨‍👩‍👧 Parent Check</button>
       </div>
       <div class="legend" id="legend"><b class="g">Green</b>read it! <b class="r">Red</b>tap it, I'll help <b class="b">Blue</b>perfect run</div>
       <div class="mic" id="micStatus"></div>
@@ -314,7 +314,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   </section>
 
   <details class="report">
-    <summary>For grown-ups · report</summary>
+    <summary>Parent Report</summary>
     <div id="report"></div>
   </details>
 
@@ -471,8 +471,8 @@ $("check").onclick=()=>{
   if (isQ(k)){
     if (!strokes.length){ say("Write your answer in the box with your pencil, then tap Check!"); return; }
     const key="q:"+(rp?rp.id:"x"); const d=pdata();
-    bubble.innerHTML=`<span class="big ok">Great writing!</span>Show your answer to a grown-up and read it out loud.${d.done[key]?"":" ⭐ Star earned."}`;
-    cheer("Great writing! Read your answer out loud to a grown-up.");
+    bubble.innerHTML=`<span class="big ok">Great writing!</span>Show your answer to a parent and read it out loud.${d.done[key]?"":" ⭐ Star earned."}`;
+    cheer("Great writing! Read your answer out loud to a parent.");
     if (!d.done[key]){ d.done[key]=true; d.stars=(d.stars||0)+1; savep(d); renderStars(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on"); renderGrid(); }
     return;
   }
@@ -842,7 +842,7 @@ $("qNo").onclick=()=>{ markCard(qCur,false); nextQ(); };
 
 // ---------- shadowing: Macha reads sentence by sentence
 $("shadow").onclick=()=>{
-  if (!("speechSynthesis" in window)) { rb("No voice on this device. Read it together with a grown-up."); return; }
+  if (!("speechSynthesis" in window)) { rb("No voice on this device. Read it together with a parent."); return; }
   const sents=[]; let cur=[];
   for (const o of rTok){ cur.push(o); if (/[。！？]/.test(o.s)){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
   let k=0; loadVoices(); speechSynthesis.cancel();
@@ -860,7 +860,7 @@ $("shadow").onclick=()=>{
 
 // ---------- read-aloud check (timer + on-device speech recognition when allowed)
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-$("parentMode").onclick=()=>{ parentOn=!parentOn; $("parentMode").setAttribute("aria-pressed",parentOn); rb(parentOn?"Grown-up mode: tap the words the child stumbled on.":"Tap a word and I'll help you read it."); };
+$("parentMode").onclick=()=>{ parentOn=!parentOn; $("parentMode").setAttribute("aria-pressed",parentOn); rb(parentOn?"Parent Check is on. Tap the words your child got wrong: they turn red.":"Tap a word and I'll help you read it."); };
 $("startRead").onclick=()=>{
   stopWordListen(); runFinal=(phase==="final");
   reading=true; rStart=Date.now(); transcript=""; tapsThisRead=0; stumbles=new Set();
@@ -929,7 +929,7 @@ $("doneRead").onclick=()=>{
   const prev=[...sessions].reverse().find(x=>x.date!==today());
   let msg=`<b>${sec} seconds</b>`;
   if (prev) msg += prev.sec>sec ? ` · ${prev.sec-sec}s faster than last time! 🚀` : prev.sec<sec ? ` · last time was ${prev.sec}s, that's okay` : " · same as last time";
-  msg += `<br>${acc!=null?acc+"% of the words matched what I heard":"No mic, so a grown-up checked"} · ${tapsThisRead} help taps`;
+  msg += `<br>${acc!=null?acc+"% of the words matched what I heard":"No mic, so a parent checked"} · ${tapsThisRead} help taps`;
   let pass=false;
   if (reds.length){
     phase="fix"; runFinal=false;
@@ -969,7 +969,7 @@ function fixWord(o){
   stopWordListen(); helpWord=o;
   document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); o.el.classList.add("now","show");
   const h=$("helper"); h.hidden=false;
-  h.innerHTML=`<span class="big">${esc(o.s)} → ${esc(o.r)}</span>Listen, then say it yourself!<br><span class="hint">${esc(o.en)}</span><div class="opts"><button type="button" id="fxHear">🔊 Hear again</button><button type="button" id="fxSay">🎤 My turn</button><button type="button" id="fxOk">✅ Grown-up says OK</button></div>`;
+  h.innerHTML=`<span class="big">${esc(o.s)} → ${esc(o.r)}</span>Listen, then say it yourself!<br><span class="hint">${esc(o.en)}</span><div class="opts"><button type="button" id="fxHear">🔊 Hear again</button><button type="button" id="fxSay">🎤 My turn</button><button type="button" id="fxOk">✅ Parent: OK</button></div>`;
   rb(`This one is ${o.r}. Listen, then say it!`);
   const go=()=>speakJaThen(o.r, ()=>{ if (helpWord===o) listenWord(o); });
   $("fxHear").onclick=go; $("fxSay").onclick=()=>listenWord(o); $("fxOk").onclick=()=>wordOK(o);
@@ -977,7 +977,7 @@ function fixWord(o){
 }
 function listenWord(o){
   stopWordListen();
-  if (!SR){ $("micStatus").textContent="No mic here. Say it out loud, then ask a grown-up to tap ✅."; return; }
+  if (!SR){ $("micStatus").textContent="No mic here. Say it out loud, then ask a parent to tap ✅ Parent: OK."; return; }
   try{
     const r=new SR(); wrec=r; r.lang="ja-JP"; r.continuous=false; r.interimResults=true; r.maxAlternatives=3;
     let got=false;
@@ -1049,7 +1049,7 @@ function renderQuestions(){
     d.innerHTML=`<div class="qt">${qi+1}. ${esc(q.q)}</div><div class="opts"></div><div class="why" hidden></div>`;
     const ob=d.querySelector(".opts"), why=d.querySelector(".why");
     q.opts.forEach((o,oi)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=["ア","イ","ウ"][oi]+" "+o;
-      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! Why do you think so? Tell a grown-up in Japanese or English."; cheer("Right! Why do you think so?"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); };
+      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! Why do you think so? Tell a parent in Japanese or English."; cheer("Right! Why do you think so?"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); };
       ob.appendChild(b); });
     box.appendChild(d);
   });
@@ -1057,13 +1057,13 @@ function renderQuestions(){
 $("wcheck").onclick=async ()=>{
   const ans=$("wans").value.trim(); const fb=$("wfeedback"); if (!ans){ rb("Say your answer out loud first, then type it."); return; }
   fb.hidden=false; fb.textContent="Macha is reading your answer…";
-  if (!live){ fb.textContent="Macha can't check here. Show it to a grown-up. Example answer: "+rp.write.model; return; }
+  if (!live){ fb.textContent="Macha can't check here. Show it to a parent. Example answer: "+rp.write.model; return; }
   try{
     const r=await live.json(`A child aged 8 to 10 who reads English and is learning Japanese answered a reading comprehension question in Japanese. The story is for Japanese grade ${rp.level}. Question: ${rp.write.q} Example of a good answer: ${rp.write.model} Child's answer: ${ans} Judge whether the answer makes sense for the story and is written in natural Japanese. Reply with only this JSON: {"ok": true or false, "praise": "one friendly sentence in simple English, max 12 words", "fix": "if the Japanese needs fixing, the corrected Japanese sentence; otherwise empty string", "tip": "one short tip in simple English, max 15 words"}`, {modelTier:"default", cache:false});
     fb.innerHTML = `<span class="big ${r.ok?"ok":"mid"}">${r.ok?"Great thinking!":"Almost"}</span>${esc(String(r.praise||""))}${r.fix?`<br>✍️ ${esc(String(r.fix))} (copy this with your pencil)`:""}<br>💡 ${esc(String(r.tip||""))}`;
     cheer(String(r.praise||"")+" "+String(r.tip||""));
     const a=rstore.get("qa."+rp.id,{}); a.write=!!r.ok; rstore.set("qa."+rp.id,a); renderReport();
-  }catch(e){ fb.textContent = e&&e.code==="not_granted" ? "Macha isn't allowed to read here. Show your answer to a grown-up." : "Couldn't reach Macha. Tap again."; }
+  }catch(e){ fb.textContent = e&&e.code==="not_granted" ? "Macha isn't allowed to read here. Show your answer to a parent." : "Couldn't reach Macha. Tap again."; }
 };
 
 // ---------- grown-up report
