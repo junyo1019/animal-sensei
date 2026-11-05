@@ -1101,20 +1101,23 @@ $("qNo").onclick=()=>{ markCard(qCur,false); nextQ(); };
 
 // ---------- shadowing: Macha reads sentence by sentence
 $("shadow").onclick=()=>{
-  if (!("speechSynthesis" in window)) { rb("No voice on this device. Read it together with a parent."); return; }
+  if (!("speechSynthesis" in window)){ rb("No voice on this device. Read it together with a parent."); return; }
+  // Macha reads the whole story in one go (smooth), and the sentence being read is highlighted
   const sents=[]; let cur=[];
-  for (const o of rTok){ cur.push(o); if (/[。！？]/.test(o.s)){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
-  let k=0; loadVoices(); speechSynthesis.cancel();
-  const go=()=>{
-    document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
-    if (k>=sents.length){ rb("Your turn! Tap ⏱ Start reading and read it all by yourself."); return; }
-    const sn=sents[k++]; sn.forEach(o=>o.el.classList.add("now"));
-    const text=sn.map(o=>o.s).join("").replace(/\s+/g,"");
-    const u=new SpeechSynthesisUtterance(text); u.lang="ja-JP"; u.rate=0.8; u.pitch=MACHA_PITCH; const v=jaVoice(); if (v) u.voice=v; lastU=u;
-    u.onend=()=>setTimeout(go, 1800);  // pause so the child can echo the sentence
-    speechSynthesis.speak(u);
-  };
-  rb("Listen, then say each sentence after me."); go();
+  for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
+  const text=rTok.map(o=>o.s).join("").replace(/\s+/g,"");
+  const starts=[]; let pos=0; for (const sn of sents){ starts.push(pos); pos+=sn.map(o=>o.s).join("").replace(/\s+/g,"").length; }
+  loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
+  const u=new SpeechSynthesisUtterance(text); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; const v=jaVoice(); if (v) u.voice=v; lastU=u;
+  const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
+  const light=(k)=>{ clearNow(); if (sents[k]){ sents[k].forEach(o=>o.el.classList.add("now")); sents[k][0].el.scrollIntoView({block:"nearest",behavior:"smooth"}); } };
+  let k=0, gotBoundary=false, est=null; light(0);
+  u.onboundary=(e)=>{ if (typeof e.charIndex!=="number") return; gotBoundary=true; let j=0; while (j+1<starts.length && starts[j+1]<=e.charIndex) j++; if (j!==k){ k=j; light(k); } };
+  u.onstart=()=>{ const t0=Date.now(), perChar=(1000/ (u.rate*6.5));   // fallback timing when the device gives no boundary events
+    est=setInterval(()=>{ if (gotBoundary){ clearInterval(est); return; } const ch=(Date.now()-t0)/perChar; let j=0; while (j+1<starts.length && starts[j+1]<=ch) j++; if (j!==k){ k=j; light(k); } }, 200); };
+  const fin=()=>{ if (est) clearInterval(est); clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); };
+  u.onend=fin; u.onerror=fin;
+  rb("Listen and follow along. Then it's your turn."); setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} speechSynthesis.speak(u); },80);
 };
 
 // ---------- read-aloud check (timer + on-device speech recognition when allowed)
