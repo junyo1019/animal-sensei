@@ -1167,12 +1167,15 @@ $("shadow").onclick=()=>{
   for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
   const v=jaVoice(); const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
+  // highlight the sentence being read: on start of each sentence, and (for iPad, where start events can be missed) on the end of the previous one
+  const light=(k)=>{ clearNow(); if (!sents[k]) return; sents[k].forEach(o=>o.el.classList.add("now")); keepVisible(sents[k][0].el); };
   const us=sents.map((sn,k)=>{ const u=new SpeechSynthesisUtterance(sn.map(o=>o.s).join("").replace(/\s+/g,"")); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
-    u.onstart=()=>{ clearNow(); sn.forEach(o=>o.el.classList.add("now")); keepVisible(sn[0].el); };
-    if (k===sents.length-1){ u.onend=()=>{ clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); }; u.onerror=u.onend; }
+    u.onstart=()=>light(k);
+    u.onend=()=>{ if (k<sents.length-1) light(k+1); else { clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); } };
+    u.onerror=u.onend;
     return u; });
   window.__shadowUs=us;   // keep references so the device does not drop queued sentences
-  rb("Listen and follow along. Then it's your turn.");
+  rb("Listen and follow along. Then it's your turn."); light(0);
   setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} us.forEach(u=>speechSynthesis.speak(u)); },80);
 };
 
@@ -1339,7 +1342,7 @@ function judge(heard){
   return {last, st:rTok.map(o=> o.i>last ? "" : (o.kanji ? (hit[o.i]?"ok":"miss") : "ok"))};
 }
 // scroll only when the word is hidden (behind the sticky clock, or below the screen)
-function keepVisible(el){ const r=el.getBoundingClientRect(); const top=$("clock").getBoundingClientRect().bottom+8; if (r.top<top || r.bottom>window.innerHeight-20) window.scrollBy({top:r.top-top-40, behavior:"smooth"}); }
+function keepVisible(el){ const r=el.getBoundingClientRect(); const top=$("clock").getBoundingClientRect().bottom+8; if (r.top>=top && r.bottom<=window.innerHeight-20) return; window.scrollBy({top:r.top-top-60, behavior:"smooth"}); }
 function paintProgress(heard){
   if (!heard.replace(/[\s、。「」！？!?,.]/g,"")) return;
   const r=judge(heard);
