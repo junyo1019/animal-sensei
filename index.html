@@ -551,6 +551,9 @@ function renderStrokes(ctx, S, widthMul, list, H){
 }
 function redraw(){ renderStrokes(dctx, drawC.width, 1, null, drawC.height); }
 // strokes that belong to cell i (by where most of the stroke sits), mapped to that cell's own 0..1 square
+function cellOf(st){ const N=nCells(); const my=st.reduce((a,p)=>a+p.y,0)/st.length; return Math.floor(my*N); }
+// after a check, wipe only the boxes that did not pass, so the child redoes just those
+function clearCells(bad){ if (!bad.length) return; strokes=strokes.filter(st=>!bad.includes(cellOf(st))); redraw(); }
 function cellStrokes(i){
   const N=nCells(); const out=[];
   for (const st of strokes){ const my=st.reduce((a,p)=>a+p.y,0)/st.length; if (Math.floor(my*N)===i) out.push(st.map(p=>({x:p.x, y:(p.y-i/N)*N, p:p.p}))); }
@@ -669,8 +672,8 @@ $("check").onclick=()=>{
       cheer("Nice tracing! Now write it by yourself.");
       strokes=[]; setStep(2); redraw(); markCells([]); return;
     }
-    bubble.innerHTML = `<span class="big mid">Almost!</span>Fix the boxes with the orange frame, then tap Check!<br>${detail}`;
-    cheer("Almost! Fix the boxes with the orange frame."); return;
+    bubble.innerHTML = `<span class="big mid">Almost!</span>The orange boxes are cleared. Trace those again, then tap Check!<br>${detail}`;
+    cheer("Almost! Trace the orange boxes again."); clearCells(bad); return;
   }
   if (!bad.length && !guideOn){
     const d=pdata(); d.done[k[0]]=true; d.stars=(d.stars||0)+1; savep(d);
@@ -683,8 +686,8 @@ $("check").onclick=()=>{
     cheer("Looking good! Now try it without the example.");
   } else {
     const allNear = bad.every(i=>rs[i].near);
-    bubble.innerHTML = `<span class="big ${allNear?"mid":"low"}">${allNear?"Nice!":"Almost!"}</span>Fix the boxes with the orange frame. You can turn the example on for a peek.<br>${detail}`;
-    cheer((allNear?"Nice! ":"Almost! ")+"Fix the boxes with the orange frame.");
+    bubble.innerHTML = `<span class="big ${allNear?"mid":"low"}">${allNear?"Nice!":"Almost!"}</span>The orange boxes are cleared. Write those again. You can turn the example on for a peek.<br>${detail}`;
+    cheer((allNear?"Nice! ":"Almost! ")+"Write the orange boxes again."); clearCells(bad);
   }
 };
 
