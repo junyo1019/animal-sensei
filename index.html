@@ -78,6 +78,10 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .order canvas{width:70px;height:70px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
 .order .oc span{font-size:13px;font-weight:800;color:var(--muted)}
 .order .sep{width:100%;height:0}
+.model.blind .ch{visibility:hidden}
+.model.blind .order{display:none}
+.model .blindNote{display:none;background:var(--paper);border-radius:14px;padding:10px 14px;margin:0 auto 8px;max-width:420px;font-weight:700;color:var(--ink)}
+.model.blind .blindNote{display:block}
 .model .ch.word{font-size:clamp(56px,8vw,96px);letter-spacing:.04em}
 .sq canvas{position:absolute;inset:0;width:100%;height:100%}
 .tools{display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px}
@@ -271,6 +275,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 <div class="board">
   <section class="model">
     <div class="ch" id="ch" lang="ja">あ</div>
+    <div class="blindNote" id="blindNote">🙈 Now from memory! Listen, then write it. <button class="chip" id="peek" type="button">👀 Peek (2 s)</button></div>
     <div class="say" id="say"></div>
     <div class="steps" id="steps">
       <span class="step on" id="s1">1 · Trace it</span><span class="arrow">→</span><span class="step" id="s2">2 · Write it yourself</span>
@@ -304,7 +309,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
       <button id="check" type="button" class="go">Check!</button>
     </div>
     <button id="ai" type="button" class="ai" hidden>🤖 Ask Macha to look</button>
-    <div class="hint" id="hint">Works best with an Apple Pencil · stroke order from <a href="http://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0) · <span id="build">build Nov 05 19:29</span></div>
+    <div class="hint" id="hint">Works best with an Apple Pencil · stroke order from <a href="http://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0) · <span id="build">build Nov 05 19:34</span></div>
   </section>
 </div>
 
@@ -346,6 +351,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
       <div class="coach"><svg id="machaRead" aria-hidden="true"></svg><div class="bubble" id="rbubble">Tap any word you can't read. I'll help!</div></div>
       <div class="rtools">
         <button class="chip" id="shadow" type="button">🐼 Macha reads first</button>
+        <button class="chip" id="pauseRead" type="button" hidden>⏸ Pause</button>
         <button class="chip go" id="startRead" type="button">🎤 Start reading</button>
         <button class="chip go" id="doneRead" type="button" hidden>✅ Done</button>
         <button class="chip" id="parentMode" type="button" aria-pressed="false">👨‍👩‍👧 Parent Check</button>
@@ -599,10 +605,14 @@ $("clear").onclick=()=>{ strokes=[]; redraw(); markCells([]); say("Cleared. Try 
 function setGuide(on){ guideOn=on; $("guideBtn").setAttribute("aria-pressed",on); $("guideBtn").textContent = on?"👀 Example on":"🙈 Example off"; drawGuide(); }
 $("guideBtn").onclick=()=>setGuide(!guideOn);
 // step 1 = trace with the example, step 2 = write alone (only step 2 earns the star)
+let peeks=0;
 function setStep(n){
   step=n; $("s1").className="step"+(n===1?" on":" done"); $("s2").className="step"+(n===2?" on":"");
-  setGuide(n===1);
+  setGuide(n===1); setBlind(n===2 && !isQ(LIST[cur]));
 }
+// step 2: the word is hidden, only its sound (and meaning) remains, like a real kanji test
+function setBlind(on){ document.querySelector(".model").classList.toggle("blind", on); if (on){ peeks=0; const k=LIST[cur]; lastWordSpoken=null; speakWord(k); } }
+$("peek").onclick=()=>{ const m=document.querySelector(".model"); m.classList.remove("blind"); peeks++; setTimeout(()=>{ if (step===2) m.classList.add("blind"); }, 2000); };
 
 // ---- scoring: compare the drawn mask with the model glyph mask (both dilated)
 function mask(S, paint){ const c=document.createElement("canvas"); c.width=c.height=S; const x=c.getContext("2d"); paint(x,S); return x.getImageData(0,0,S,S).data; }
@@ -686,7 +696,7 @@ $("check").onclick=()=>{
   const detail = `<span class="hint">${notes.map(esc).join("<br>")}</span>`;
   if (step===1){
     if (!bad.length){
-      bubble.innerHTML = `<span class="big ok">Traced!</span>Now the examples are gone. Write ${k[0]} by yourself from memory, then tap Check!`;
+      bubble.innerHTML = `<span class="big ok">Traced!</span>Now the word is hidden. Listen: ${esc(k[3]||k[0])}${k[4]?" ("+esc(k[4])+")":""}. Write it from memory, then tap Check! Tap 👀 Peek if you need a look.`;
       cheer("Nice tracing! Now write it by yourself.");
       strokes=[]; setStep(2); redraw(); markCells([]); return;
     }
@@ -697,7 +707,7 @@ $("check").onclick=()=>{
     const d=pdata(); d.done[k[0]]=true; d.stars=(d.stars||0)+1; savep(d);
     renderStars(); renderGrid(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on");
     $("s2").className="step done";
-    bubble.innerHTML = `<span class="big ok">Awesome!</span>You wrote ${k[0]} all by yourself. ⭐ Star earned. Tap Next to keep going.<br>${detail}`;
+    bubble.innerHTML = `<span class="big ok">Awesome!</span>You wrote ${k[0]} ${peeks?`with ${peeks} peek${peeks>1?"s":""}`:"from memory"}. ⭐ Star earned. Tap Next to keep going.<br>${detail}`;
     cheer("Awesome! You earned a star!"); markSetDone(); markKataDone();
   } else if (!bad.length && guideOn){
     bubble.innerHTML = `<span class="big mid">Looking good!</span>Stars are for writing without the example. Turn it off and try once more.<br>${detail}`;
@@ -739,7 +749,7 @@ function show(i){
   say(`This is ${k[0]}, it sounds like "${romajiOf(k)}". Trace the gray letter, then tap Check!`);
 }
 // ---- Write tab modes: words from the story you read, or the kana chart
-const WORDS_PER_DAY = 5;
+const WORDS_PER_DAY = 8;
 // Daily Katakana: words the girls already know in English, two a day, in the same vertical boxes
 const KATA = [["ハワイ","Hawaii"],["アメリカ","America"],["パン","bread"],["バス","bus"],["ケーキ","cake"],["ジュース","juice"],["ミルク","milk"],["アイスクリーム","ice cream"],["パイナップル","pineapple"],["バナナ","banana"],
  ["トマト","tomato"],["サラダ","salad"],["ピザ","pizza"],["ハンバーガー","hamburger"],["ホットドッグ","hot dog"],["チョコレート","chocolate"],["クッキー","cookie"],["ドーナツ","donut"],["サンドイッチ","sandwich"],["スープ","soup"],
@@ -751,8 +761,8 @@ const KATA = [["ハワイ","Hawaii"],["アメリカ","America"],["パン","bread
  ["ティーチャー","teacher"],["スクール","school"],["クラス","class"],["テスト","test"],["エネルギー","energy"],["ウィークエンド","weekend"],["チーム","team"],["キャプテン","captain"],["チャンス","chance"],["ニュース","news"]];
 function dailyKatakana(){
   const key="kata.day"; let st=rstore.get(key,{date:null,start:0,done:false});
-  if (st.date!==today()){ if (st.done) st.start=(st.start+2)%KATA.length; st.date=today(); st.done=false; rstore.set(key,st); }
-  return [0,1].map(i=>{ const w=KATA[(st.start+i)%KATA.length]; return [w[0],0,w[0],kataToHira(w[0]),w[1],"w","kata"]; });
+  if (st.date!==today()){ if (st.done) st.start=(st.start+4)%KATA.length; st.date=today(); st.done=false; rstore.set(key,st); }
+  return [0,1,2,3].map(i=>{ const w=KATA[(st.start+i)%KATA.length]; return [w[0],0,w[0],kataToHira(w[0]),w[1],"w","kata"]; });
 }
 function markKataDone(){ const kw=LIST.filter(k=>k[6]==="kata"); const done=pdata().done; if (kw.length && kw.every(k=>done[k[0]])){ const st=rstore.get("kata.day",{date:today(),start:0,done:false}); st.done=true; rstore.set("kata.day",st); markDay("kata"); } }
 function startKatakana(){ if ($("writeTab").hidden) showTab("write"); const i=LIST.findIndex(k=>k[6]==="kata"); if (i>=0) show(i); rb("Daily Katakana! You know these words in English. Write them in katakana!"); }
@@ -1027,7 +1037,7 @@ function autoRead(){
 function loadPassage(id){
   rp = allPassages().find(p=>p.id===id) || visiblePassages()[0];
   $("passageSel").value=rp.id; rstore.set("lastP", rp.id);
-  stopWordListen(); phase="read"; runFinal=false; setStartLabel();
+  stopWordListen(); stopShadow(); phase="read"; runFinal=false; setStartLabel();
   const oldTip=document.getElementById("tip"); if (oldTip) oldTip.classList.remove("on");
   rTok=[]; const box=$("passage"); box.innerHTML=""; stumbles=new Set(); tapsThisRead=0; helpWord=null; $("helper").hidden=true; $("result").hidden=true;
   let i=0, prevEl=null;
@@ -1160,30 +1170,40 @@ $("qYes").onclick=()=>{ const c=markCard(qCur,true); if (c && c.streak>=3){ chee
 $("qNo").onclick=()=>{ markCard(qCur,false); nextQ(); };
 
 // ---------- shadowing: Macha reads sentence by sentence
-$("shadow").onclick=()=>{
-  if (!("speechSynthesis" in window)){ rb("No voice on this device. Read it together with a parent."); return; }
-  // Macha reads the whole story in one go (smooth), and the sentence being read is highlighted
-  const sents=[]; let cur=[];
-  for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
+let shadowK=0, shadowPaused=false, shadowOn=false, shadowSents=[];
+function speakFrom(k){
+  const sents=shadowSents; if (!sents[k]) return;
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
   const v=jaVoice(); const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
-  // highlight the sentence being read: on start of each sentence, and (for iPad, where start events can be missed) on the end of the previous one
-  const light=(k)=>{ clearNow(); if (!sents[k]) return; sents[k].forEach(o=>o.el.classList.add("now")); keepVisible(sents[k][0].el); };
-  const us=sents.map((sn,k)=>{ const u=new SpeechSynthesisUtterance(sn.map(o=>o.s).join("").replace(/\s+/g,"")); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
-    u.onstart=()=>light(k);
-    u.onend=()=>{ if (k<sents.length-1) light(k+1); else { clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); } };
-    u.onerror=u.onend;
-    return u; });
-  window.__shadowUs=us;   // keep references so the device does not drop queued sentences
-  rb("Listen and follow along. Then it's your turn."); light(0);
+  const light=(j)=>{ clearNow(); if (!sents[j]) return; shadowK=j; sents[j].forEach(o=>o.el.classList.add("now")); keepVisible(sents[j][0].el); };
+  const us=[]; for (let j=k;j<sents.length;j++){ const sn=sents[j]; const u=new SpeechSynthesisUtterance(sn.map(o=>o.s).join("").replace(/\s+/g,"")); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
+    u.onstart=()=>{ if (!shadowPaused) light(j); };
+    u.onend=()=>{ if (shadowPaused) return; if (j<sents.length-1) light(j+1); else { clearNow(); shadowOn=false; $("pauseRead").hidden=true; rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); } };
+    u.onerror=()=>{};
+    us.push(u); }
+  window.__shadowUs=us; light(k);
   setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} us.forEach(u=>speechSynthesis.speak(u)); },80);
+}
+$("shadow").onclick=()=>{
+  if (!("speechSynthesis" in window)){ rb("No voice on this device. Read it together with a parent."); return; }
+  // Macha reads the whole story, sentence after sentence with no gap; the sentence being read is highlighted; ⏸ pauses, ▶ continues from that sentence
+  const sents=[]; let cur=[];
+  for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
+  shadowSents=sents; shadowPaused=false; shadowOn=true; $("pauseRead").hidden=false; $("pauseRead").textContent="⏸ Pause";
+  rb("Listen and follow along. Tap ⏸ to pause. Then it's your turn."); speakFrom(0);
 };
+$("pauseRead").onclick=()=>{
+  if (!shadowOn) return;
+  if (!shadowPaused){ shadowPaused=true; try{ speechSynthesis.cancel(); }catch(e){} $("pauseRead").textContent="▶ Continue"; rb("Paused. Tap ▶ to continue from this sentence."); }
+  else { shadowPaused=false; $("pauseRead").textContent="⏸ Pause"; speakFrom(shadowK); }
+};
+function stopShadow(){ if (shadowOn){ shadowOn=false; shadowPaused=false; try{ speechSynthesis.cancel(); }catch(e){} $("pauseRead").hidden=true; document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); } }
 
 // ---------- read-aloud check (timer + on-device speech recognition when allowed)
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 $("parentMode").onclick=()=>{ parentOn=!parentOn; $("parentMode").setAttribute("aria-pressed",parentOn); rb(parentOn?"Parent Check is on. Tap the words your child got wrong: they turn red.":"Tap a word and I'll help you read it."); };
 $("startRead").onclick=()=>{
-  stopWordListen(); runFinal=(phase==="final");
+  stopWordListen(); stopShadow(); runFinal=(phase==="final");
   reading=true; rStart=Date.now(); transcript=""; tapsThisRead=0; stumbles=new Set();
   document.querySelectorAll(".passage .w").forEach(e=>e.classList.remove("stumble","show","now","cursor"));
   rTok.forEach(o=>setSt(o,""));
@@ -1342,7 +1362,7 @@ function judge(heard){
   return {last, st:rTok.map(o=> o.i>last ? "" : (o.kanji ? (hit[o.i]?"ok":"miss") : "ok"))};
 }
 // scroll only when the word is hidden (behind the sticky clock, or below the screen)
-function keepVisible(el){ const r=el.getBoundingClientRect(); const top=$("clock").getBoundingClientRect().bottom+8; if (r.top>=top && r.bottom<=window.innerHeight-20) return; window.scrollBy({top:r.top-top-60, behavior:"smooth"}); }
+function keepVisible(el){ const r=el.getBoundingClientRect(); const top=$("clock").getBoundingClientRect().bottom+8; if (r.top>=top && r.bottom<=window.innerHeight-20) return; try{ el.scrollIntoView({block:"center", behavior:"smooth"}); }catch(e){ el.scrollIntoView(); } }
 function paintProgress(heard){
   if (!heard.replace(/[\s、。「」！？!?,.]/g,"")) return;
   const r=judge(heard);
