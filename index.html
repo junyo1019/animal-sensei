@@ -615,12 +615,13 @@ function scoreCell(ch, list){
     if (d){ nDr++; if (rd) prec++; }
   }
   if (nDr < nRef*0.05) return {empty:true};
-  let sh = 100*(0.55*cov/nRef + 0.45*prec/nDr);
+  const kana=/[ぁ-ゖァ-ヺー]/.test(ch);   // kana: shape is what counts, stroke count and order are advice only
+  let sh = kana ? 100*(0.65*cov/nRef + 0.35*prec/nDr) : 100*(0.55*cov/nRef + 0.45*prec/nDr);
   const n=strokesOf(ch); let sd=0, pen=0;
-  if (n){ sd=list.length-n; pen=Math.min(20, Math.abs(sd)*(n>=10?3:8)); if (n>=10 && Math.abs(sd)<=2){ sd=0; pen=0; } }
-  const need = n>=10?65:75;
+  if (n){ sd=list.length-n; if (!kana){ pen=Math.min(20, Math.abs(sd)*(n>=10?3:8)); if (n>=10 && Math.abs(sd)<=2){ sd=0; pen=0; } } else if (Math.abs(sd)<=1) sd=0; }
+  const need = kana ? 60 : (n>=10?65:75);
   // stroke order and direction, from the stroke data (only when the count is about right)
-  const ord=orderCheck(ch, norm); let opn=0; if (ord){ opn=Math.min(16, (ord.wrong.length + ord.reversed.length)*8); pen+=opn; }
+  const ord=orderCheck(ch, norm); let opn=0; if (ord && !kana){ opn=Math.min(16, (ord.wrong.length + ord.reversed.length)*8); pen+=opn; }
   const total=Math.max(0,Math.round(sh-pen));
   return {ch, score:total, shape:Math.round(sh), cov:cov/nRef, prec:prec/nDr, strokeDiff:sd, n, used:list.length, pen, opn, order:ord, sizeRatio, need, pass:total>=need, near:total>=need-20};
 }
