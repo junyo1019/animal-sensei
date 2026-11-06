@@ -1264,6 +1264,7 @@ $("doneRead").onclick=()=>{
     if (pass && !was) giveStar(); }
   else { sessions.push({date:today(),sec,acc,taps:tapsThisRead,stumbles:stumbleWords,pass,blue:pass,reads:1}); rstore.set("sess."+rp.id,sessions); if (pass) giveStar(); }
   if (pass) cheer("Perfect! All blue! You read the whole story!");
+  try{ rstore.set("heard."+rp.id, transcript.trim().slice(0,400)); }catch(e){}
   markDay("read",{story:rp.title});
   $("result").innerHTML=msg; $("result").hidden=false;
   const day=Math.min(sessions.length,3); $("qs").hidden=day<2; $("writeQ").hidden=day<3; if (day>=2) renderQuestions(); if (day>=3){ $("wprompt").textContent=rp.write.q; }
@@ -1319,8 +1320,8 @@ function normHeard(s){ return s.replace(/[０-９]/g,c=>String.fromCharCode(c.ch
 const HOMO={街:"町",観:"見",視:"見",訊:"聞",聴:"聞",効:"聞",利:"聞",造:"作",創:"作",逢:"会",云:"言",想:"思",脚:"足",返:"帰",付:"着",來:"来",保:"持",測:"計",量:"計",泊:"止",留:"止",暖:"温",替:"変",代:"変",換:"変",鳴:"泣",採:"取",獲:"取",撮:"取",映:"写",勝:"買"};
 const canon = t => t.replace(/[一-鿿]/g,c=>HOMO[c]||c);
 // words the story writes with kana that the recognizer returns in full kanji
-const ALT={"友だち":"友達","子ども":"子供","日よう日":"日曜日","きゅう食":"給食","ごはん":"ご飯","気もち":"気持ち","長ぐつ":"長靴","かさ":"傘","見つけました":"見付けました","拾いました":"ひろいました","持ち物":"持ちもの","お姉さん":"おねえさん","お兄さん":"おにいさん","日直":"にっちょく","当番":"とうばん","上手":"じょうず","元気":"げんき","苦手":"にがて","黄色":"きいろ","一つ":"ひとつ","二人":"ふたり","一行":"いちぎょう","十":"じゅう","三":"さん","一":"いち","三つ":"みっつ","二つ":"ふたつ"};
-function altForms(o){ const out=[]; if (ALT[o.s]) out.push(ALT[o.s]); return out; }
+const ALT={"友だち":"友達","子ども":"子供","日よう日":"日曜日","きゅう食":"給食","ごはん":"ご飯","気もち":"気持ち","長ぐつ":"長靴","かさ":"傘","見つけました":"見付けました","拾いました":"ひろいました","持ち物":"持ちもの","お姉さん":"おねえさん","お兄さん":"おにいさん","日直":"にっちょく","当番":"とうばん","上手":"じょうず","元気":"げんき","苦手":"にがて","黄色":"きいろ","一つ":"ひとつ","二人":"ふたり","一行":"いちぎょう","十":"じゅう","三":"さん","一":"いち","三つ":"みっつ","二つ":"ふたつ","持った":"待った","持って":"待って","開いて":"あいて","重い":"おもい","笑って":"わらって","自動":"じどう"};
+function altForms(o){ return ALT[o.s] ? ALT[o.s].split("|") : []; }
 function judge(heard){
   const h=canon(normHeard(heard)).replace(/[\s、。「」！？!?,.]/g,""); let hpos=0, last=-1; const hit={};
   for (const o of rTok){
@@ -1430,6 +1431,7 @@ function renderReport(){
   h+=`<p>Words asked about (bold = gave up): ${tapped||"none yet"}</p>`;
   h+=`<p>Word cards: ${cards.length} · learned (3 days in a row): ${learned}</p>`;
   const qk=Object.keys(qa); if (qk.length) h+=`<p>Questions: ${qk.map(k=>k==="write"?("write "+(qa[k]?"✅":"✗")):("Q"+(+k+1)+" "+(qa[k]?"✅":"✗"))).join(" · ")}</p>`;
+  const heard=rstore.get("heard."+rp.id,""); if (heard) h+=`<p><b>What the iPad heard last time:</b><br><span style="font-family:var(--model)">${esc(heard)}</span></p>`;
   h+=renderCalendar();
   $("report").innerHTML=h;
 }
