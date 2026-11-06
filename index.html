@@ -1266,7 +1266,7 @@ function listenWord(o){
     const r=new SR(); wrec=r; r.lang="ja-JP"; r.continuous=false; r.interimResults=true; r.maxAlternatives=3;
     let got=false;
     r.onresult=(e)=>{ let heard="";
-      for (let i=e.resultIndex;i<e.results.length;i++) for (let j=0;j<e.results[i].length;j++){ const t=canon(normHeard(e.results[i][j].transcript)).replace(/[\s、。「」！？]/g,""); heard+=t; if (t.includes(canon(o.s))||t.includes(o.r)||(o.kata&&t.includes(kataToHira(o.s)))) got=true; }
+      for (let i=e.resultIndex;i<e.results.length;i++) for (let j=0;j<e.results[i].length;j++){ const t=canon(normHeard(e.results[i][j].transcript)).replace(/[\s、。「」！？]/g,""); heard+=t; if (t.includes(canon(o.s))||t.includes(o.r)||(o.kata&&t.includes(kataToHira(o.s)))||altForms(o).some(a=>t.includes(canon(a)))) got=true; }
       if (got){ stopWordListen(); wordOK(o); } else $("micStatus").textContent="🎤 I heard: "+heard.slice(-20); };
     r.onerror=(e)=>{ wrec=null; $("micStatus").textContent = (e.error==="not-allowed"||e.error==="service-not-allowed") ? "Microphone blocked. Allow it in Safari's Website Settings." : "Mic error ("+e.error+"). Tap 🎤 My turn to try again."; };
     r.onend=()=>{ if (!got && wrec===r){ wrec=null; $("micStatus").textContent="Not yet. Tap 🔊 to hear me again, then 🎤 My turn."; } };
@@ -1287,6 +1287,9 @@ function normHeard(s){ return s.replace(/[０-９]/g,c=>String.fromCharCode(c.ch
 // kanji the recognizer may pick instead of the one in the story (same sound): map both sides to one form
 const HOMO={街:"町",観:"見",視:"見",訊:"聞",聴:"聞",効:"聞",利:"聞",造:"作",創:"作",逢:"会",云:"言",想:"思",脚:"足",返:"帰",付:"着",來:"来",保:"持",測:"計",量:"計",泊:"止",留:"止",暖:"温",替:"変",代:"変",換:"変",鳴:"泣",採:"取",獲:"取",撮:"取",映:"写",勝:"買"};
 const canon = t => t.replace(/[一-鿿]/g,c=>HOMO[c]||c);
+// words the story writes with kana that the recognizer returns in full kanji
+const ALT={"友だち":"友達","子ども":"子供","日よう日":"日曜日","きゅう食":"給食","ごはん":"ご飯","気もち":"気持ち","長ぐつ":"長靴","かさ":"傘","見つけました":"見付けました","拾いました":"ひろいました","持ち物":"持ちもの","お姉さん":"おねえさん","お兄さん":"おにいさん","日直":"にっちょく","当番":"とうばん","上手":"じょうず","元気":"げんき","苦手":"にがて","黄色":"きいろ","一つ":"ひとつ","二人":"ふたり","一行":"いちぎょう","十":"じゅう","三":"さん","一":"いち","三つ":"みっつ","二つ":"ふたつ"};
+function altForms(o){ const out=[]; if (ALT[o.s]) out.push(ALT[o.s]); return out; }
 function judge(heard){
   const h=canon(normHeard(heard)).replace(/[\s、。「」！？!?,.]/g,""); let hpos=0, last=-1; const hit={};
   for (const o of rTok){
@@ -1295,6 +1298,9 @@ function judge(heard){
     let at=win.indexOf(surf), len=surf.length;
     if (at<0 && o.kanji){ at=win.indexOf(o.r); len=o.r.length; }                 // heard as kana
     if (at<0 && o.kata){ at=win.indexOf(kataToHira(surf)); len=surf.length; }   // katakana heard as hiragana
+    if (at<0 && o.kanji) for (const alt of altForms(o)){ const ca=canon(alt); at=win.indexOf(ca); if (at>=0){ len=ca.length; break; } }
+    if (at<0 && o.kanji){   // kanji + okurigana in the story, but the recognizer wrote the whole word in kanji (友だち → 友達)
+      const m=surf.match(/^([一-鿿]+)([぀-ゟ]{2,})$/); if (m){ const j=win.indexOf(m[1]); if (j>=0 && j<=2 && /[一-鿿]/.test(win[j+m[1].length]||"")){ at=j; len=m[1].length+1; } } }
     if (at<0 && !o.kanji && surf.length>=3){ const part=surf.slice(0,2); at=win.indexOf(part); len=part.length; }   // kana words: loose
     if (at>=0){ hpos+=at+len; hit[o.i]=1; last=o.i; }
   }
@@ -1333,7 +1339,7 @@ function renderQuestions(){
     d.innerHTML=`<div class="qt">${qi+1}. ${esc(q.q)}</div><div class="opts"></div><div class="why" hidden></div>`;
     const ob=d.querySelector(".opts"), why=d.querySelector(".why");
     q.opts.forEach((o,oi)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=["ア","イ","ウ"][oi]+" "+o;
-      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! Why do you think so? Tell a parent in Japanese or English."; cheer("Right! Why do you think so?"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); };
+      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! ⭕"; cheer("Right!"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); };
       ob.appendChild(b); });
     box.appendChild(d);
   });
