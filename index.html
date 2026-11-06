@@ -73,6 +73,11 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .pad{background:var(--paper);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .sq{position:relative;width:100%;aspect-ratio:1/1;max-width:100%;margin:0 auto;border-radius:16px;overflow:hidden;background:#FFFEF9;touch-action:none;border:2px solid var(--line)}
 .pad .cellfail{position:absolute;left:0;right:0;border:3px solid #E8733C;border-radius:12px;pointer-events:none;box-sizing:border-box}
+.order{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 2px}
+.order .oc{display:flex;flex-direction:column;align-items:center;gap:2px}
+.order canvas{width:70px;height:70px;border-radius:10px;background:var(--paper);border:1px solid var(--line)}
+.order .oc span{font-size:13px;font-weight:800;color:var(--muted)}
+.order .sep{width:100%;height:0}
 .model .ch.word{font-size:clamp(56px,8vw,96px);letter-spacing:.04em}
 .sq canvas{position:absolute;inset:0;width:100%;height:100%}
 .tools{display:grid;grid-template-columns:1fr 1fr 2fr;gap:8px}
@@ -106,7 +111,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .wmode span{padding:6px 16px;font-family:var(--display);font-size:14px;font-weight:600;color:var(--sea)}
 .model .say .qtext{font-family:var(--model);font-size:22px;line-height:1.6;color:var(--ink);display:block;text-align:left}
 .model .ch.q{font-size:clamp(64px,10vw,96px)}
-.clock{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;background:var(--paper);border-radius:22px;padding:10px 16px;margin:0 0 12px;border:3px solid transparent}
+.clock{position:sticky;top:6px;z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.08);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;background:var(--paper);border-radius:22px;padding:10px 16px;margin:0 0 12px;border:3px solid transparent}
 .clock.on{border-color:var(--sea)}
 .clock.low{border-color:var(--warn)}
 .clock.low .big{color:var(--warn)}
@@ -122,6 +127,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .clock .st.done{opacity:.45;text-decoration:line-through}
 .clock .ctl{display:flex;gap:6px}
 .clock .ctl button{padding:10px 14px;border-radius:14px;background:var(--bg);font-size:14px;font-weight:800}
+.clock .ctl .snd{font-size:18px;padding:8px 10px}
 .clock .ctl .go{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-size:16px;font-weight:700}
 .clock .bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
 .clock .bar i{display:block;height:100%;width:0;background:var(--sea);transition:width 1s linear}
@@ -192,13 +198,13 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .helper .wait{font-family:var(--display);font-size:28px;color:var(--warn)}
 .result{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--bg);font-size:15px;line-height:1.5}
 .result b{font-family:var(--display);font-size:22px}
-.qs .q{padding:10px 0;border-top:1px solid var(--line)}
+.qs .q{padding:16px 0;border-top:1px solid var(--line)}
 .qs .q:first-child{border-top:0}
-.qs .qt{font-family:var(--model);font-size:18px;margin-bottom:6px}
+.qs .qt{font-family:var(--model);font-size:26px;line-height:1.6;margin-bottom:10px}
 .qs .opts{display:flex;gap:8px;flex-wrap:wrap}
-.qs .opts button{padding:10px 14px;border-radius:14px;background:var(--bg);font-family:var(--model);font-size:17px}
+.qs .opts button{padding:14px 20px;border-radius:16px;background:var(--bg);font-family:var(--model);font-size:24px;line-height:1.4}
 .qs .opts button.right{background:var(--ok);color:#fff}.qs .opts button.wrong{background:#FDE2D3}
-.qs .why{margin-top:6px;font-size:14px;color:var(--muted);font-weight:600}
+.qs .why{margin-top:8px;font-size:18px;color:var(--muted);font-weight:600}
 .write p{font-family:var(--model);font-size:18px;margin:0 0 8px}
 textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding:10px;border-radius:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;min-width:0}
 .report{background:var(--paper);border-radius:22px;padding:12px 16px;margin-bottom:12px;font-size:14px}
@@ -236,7 +242,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 <div class="clock" id="clock" aria-live="off">
   <div><div class="lbl" id="clockLbl">TODAY · 25 MIN</div><div class="big" id="clockBig">25:00</div></div>
   <div class="steps" id="clockSteps"></div>
-  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 25 min</button><button type="button" id="clockNext" hidden>Next ▶</button><button type="button" id="clockReset" hidden>Reset</button></div>
+  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 25 min</button><button type="button" id="clockNext" hidden>Next ▶</button><button type="button" id="clockReset" hidden>Reset</button><button type="button" class="snd" id="clockSound" title="Countdown sound">🔔</button></div>
   <div class="bar"><i id="clockBar"></i></div>
 </div>
 <nav class="tabs" role="tablist">
@@ -256,6 +262,9 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
     <div class="row">
       <button class="chip" id="speak" type="button">🔊 Hear it</button>
       <button class="chip" id="watch" type="button">▶ Watch the strokes</button>
+    </div>
+    <div class="order" id="order" aria-label="Stroke order"></div>
+    <div class="row">
       <button class="chip" id="guideBtn" type="button" aria-pressed="true">👀 Example on</button>
     </div>
     <div class="nav">
@@ -441,12 +450,12 @@ function size(){
 // ---- stroke order data: KanjiVG (Ulrich Apel, CC BY-SA 3.0, http://kanjivg.tagaini.net), one SVG path per stroke in a 109x109 box
 let SO = {}, SOP = {};
 const SO_URL = ((window.top===window) && !window.claude) ? "strokes.json" : "https://junyo1019.github.io/animal-sensei/strokes.json";
-fetch(SO_URL).then(r=>r.json()).then(d=>{ SO=d; try{ drawGuide(); }catch(e){} }).catch(()=>{});
+fetch(SO_URL).then(r=>r.json()).then(d=>{ SO=d; try{ drawGuide(); renderOrder(); }catch(e){} }).catch(()=>{});
 async function ensureSO(ch){   // a character that is not bundled (a story the parent added): fetch it from KanjiVG
   if (SO[ch] || !ch || !/[぀-ヿ一-鿿]/.test(ch)) return;
   try{ const t=await (await fetch(`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${ch.codePointAt(0).toString(16).padStart(5,"0")}.svg`)).text();
     const sp=t.slice(t.indexOf("kvg:StrokePaths"), t.indexOf("kvg:StrokeNumbers")); const ds=[...sp.matchAll(/\sd="([^"]+)"/g)].map(m=>m[1]);
-    if (ds.length){ SO[ch]=ds; drawGuide(); } }catch(e){}
+    if (ds.length){ SO[ch]=ds; drawGuide(); renderOrder(); } }catch(e){}
 }
 function soPoints(ch){   // each stroke sampled into 16 points, 0..1 coordinates
   if (SOP[ch]) return SOP[ch]; if (!SO[ch]) return null;
@@ -479,10 +488,23 @@ function drawGuide(){
     gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(1,S/300); gctx.setLineDash([S/60,S/60]);
     gctx.beginPath(); gctx.moveTo(S/2,oy); gctx.lineTo(S/2,oy+S); gctx.moveTo(0,oy+S/2); gctx.lineTo(S,oy+S/2); gctx.stroke(); gctx.restore();
     if (i>0){ gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(2,S/120); gctx.beginPath(); gctx.moveTo(0,oy); gctx.lineTo(S,oy); gctx.stroke(); gctx.restore(); }
-    if (guideOn && chars[i]){ gctx.globalAlpha=.55; glyph(gctx,S,chars[i],g,0,oy); gctx.globalAlpha=1; drawNumbers(gctx,S,chars[i],oy); }
+    if (guideOn && chars[i]){ gctx.globalAlpha=.55; glyph(gctx,S,chars[i],g,0,oy); gctx.globalAlpha=1; }
   }
 }
 // stroke numbers at the start of each stroke, like a kanji drill book
+// stroke order strip: the character built up one stroke at a time, newest stroke in green (like a kanji drill)
+function renderOrder(){
+  const box=$("order"); box.innerHTML=""; if (isQ(LIST[cur])) return;
+  const sea=getComputedStyle(document.documentElement).getPropertyValue("--sea").trim()||"#3A9D5D";
+  const g=getComputedStyle(document.documentElement).getPropertyValue("--guide").trim()||"#B9CAD9";
+  const dpr=Math.min(window.devicePixelRatio||1,2), S=70*dpr;
+  cellChars().forEach((ch,ci)=>{ const P=SO[ch]; if (!P) return; if (ci>0){ const sp=document.createElement("div"); sp.className="sep"; box.appendChild(sp); }
+    P.forEach((d,k)=>{ const w=document.createElement("div"); w.className="oc"; const c=document.createElement("canvas"); c.width=S; c.height=S; const x=c.getContext("2d");
+      x.save(); x.scale(S/109,S/109); x.lineCap="round"; x.lineJoin="round"; x.lineWidth=109*0.075;
+      for (let j=0;j<k;j++){ x.strokeStyle=g; x.stroke(new Path2D(P[j])); }
+      x.strokeStyle=sea; x.stroke(new Path2D(d)); x.restore();
+      const n=document.createElement("span"); n.textContent=k+1; w.appendChild(c); w.appendChild(n); box.appendChild(w); }); });
+}
 function drawNumbers(ctx, S, ch, oy){
   const P=soPoints(ch); if (!P) return;
   const sea=getComputedStyle(document.documentElement).getPropertyValue("--sea").trim()||"#3A9D5D";
@@ -669,13 +691,15 @@ $("check").onclick=()=>{
 // ---- navigation
 function esc(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 function say(t){ bubble.textContent=t; }
+let lastWordSpoken=null;
+function speakWord(k){ if (!k || isQ(k)) return; const t=k[5]==="w" ? k[0] : `${k[0]}。${k[2]}`; if (lastWordSpoken===t) return; lastWordSpoken=t; setTimeout(()=>speakJa(t), 350); }
 function show(i){
-  cur=(i+LIST.length)%LIST.length; const k=LIST[cur];
+  cur=(i+LIST.length)%LIST.length; const k=LIST[cur]; speakWord(k);
   strokes=[]; chEl.classList.toggle("q", isQ(k));
   if (isQ(k)){
     chEl.textContent="？";
     sayEl.innerHTML = `<span class="qtext">${esc(k[2])}</span>`;
-    chEl.classList.remove("word"); setStep(2); setGuide(false); redraw(); renderGrid(); size(); markCells([]);
+    chEl.classList.remove("word"); setStep(2); setGuide(false); redraw(); renderGrid(); size(); markCells([]); $("order").innerHTML="";
     say("Question time! Read it, then write your answer in the box. Small is okay!");
     return;
   }
@@ -684,13 +708,13 @@ function show(i){
   if (k[5]==="w"){
     chEl.textContent=k[0]; chEl.classList.add("word");
     sayEl.innerHTML = k[6]==="kata" ? `<span class="jp">${esc(k[4])}</span><br>katakana · ${esc(k[3])} · ${k[0].length} letters` : `<span class="jp">${esc(k[3])}</span><br>${esc(k[4])} · ${k[0].length} ${k[0].length>1?"letters":"letter"}`;
-    setStep(1); redraw(); renderGrid(); size();
+    setStep(1); redraw(); renderGrid(); size(); renderOrder();
     say(k[6]==="kata" ? `Daily Katakana: "${k[4]}" is ${k[0]} in Japanese. Say it: ${k[3]}. Trace it, then write it yourself!` : `${k[0]} (${k[3]}) means "${k[4]}". Trace the gray letters in the boxes from top to bottom, then tap Check!`); return;
   }
   chEl.classList.remove("word"); chEl.textContent=k[0];
   const jp = k[2].split("").map(c=>c===k[0]?`<b>${c}</b>`:esc(c)).join("");
   sayEl.innerHTML = `<span class="jp">${jp}</span><br>${esc(k[3])} · ${esc(k[4])}`;
-  setStep(1); redraw(); renderGrid(); size();
+  setStep(1); redraw(); renderGrid(); size(); renderOrder();
   say(`This is ${k[0]}, it sounds like "${romajiOf(k)}". Trace the gray letter, then tap Check!`);
 }
 // ---- Write tab modes: words from the story you read, or the kana chart
@@ -921,7 +945,11 @@ const rb = t => { $("rbubble").textContent=t; };
 const PLAN=[{id:"read",name:"Read",tab:"read",min:13},{id:"write",name:"Write",tab:"write",min:7},{id:"kata",name:"Katakana",tab:"write",min:3},{id:"wrap",name:"Wrap up",tab:"read",min:2}];
 const TOTAL_MIN = PLAN.reduce((a,p)=>a+p.min,0);
 let clk = store.get("pq.clock", null);   // {start, step, stepStart, paused}
-let clkTimer=null; let clkChimed={}; 
+let clkTimer=null; let clkChimed={}; let clkSound=store.get("pq.clockSound",true); let lastTick=-1; let ac=null;
+function beep(f,dur,vol){ if (!clkSound) return; try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if (ac.state==="suspended") ac.resume(); const o=ac.createOscillator(), g=ac.createGain(); o.type="square"; o.frequency.value=f; o.connect(g); g.connect(ac.destination); const t=ac.currentTime; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.start(t); o.stop(t+dur+0.02); }catch(e){} }
+$("clockSound").onclick=()=>{ clkSound=!clkSound; store.set("pq.clockSound",clkSound); $("clockSound").textContent=clkSound?"🔔":"🔕"; if (clkSound) beep(880,0.08,0.2); };
+$("clockSound").textContent=clkSound?"🔔":"🔕";
+
 function fmt(sec){ sec=Math.max(0,Math.round(sec)); return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
 function renderSteps(){
   const box=$("clockSteps"); box.innerHTML="";
@@ -930,7 +958,7 @@ function renderSteps(){
 }
 function stepLeft(){ if (!clk) return 0; return PLAN[clk.step].min*60 - (Date.now()-clk.stepStart)/1000; }
 function totalLeft(){ if (!clk) return TOTAL_MIN*60; return TOTAL_MIN*60 - (Date.now()-clk.start)/1000; }
-function ding(kind){ try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const notes=kind==="end"?[660,880,1100]:[880,660]; notes.forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=f; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,ac.currentTime+i*0.18); g.gain.exponentialRampToValueAtTime(0.3,ac.currentTime+i*0.18+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+i*0.18+0.17); o.start(ac.currentTime+i*0.18); o.stop(ac.currentTime+i*0.18+0.2); }); }catch(e){} }
+function ding(kind){ if (!clkSound) return; try{ const ac=new (window.AudioContext||window.webkitAudioContext)(); const notes=kind==="end"?[660,880,1100]:[880,660]; notes.forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=f; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001,ac.currentTime+i*0.18); g.gain.exponentialRampToValueAtTime(0.3,ac.currentTime+i*0.18+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+i*0.18+0.17); o.start(ac.currentTime+i*0.18); o.stop(ac.currentTime+i*0.18+0.2); }); }catch(e){} }
 function tick(){
   const c=$("clock"); if (!clk){ $("clockBig").textContent=fmt(TOTAL_MIN*60); $("clockLbl").textContent=`TODAY · ${TOTAL_MIN} MIN`; c.className="clock"; $("clockBar").style.width="0"; renderSteps(); return; }
   const tl=totalLeft(), sl=stepLeft(), p=PLAN[clk.step];
@@ -939,10 +967,12 @@ function tick(){
   $("clockBar").style.width=Math.min(100, 100*(1-tl/(TOTAL_MIN*60)))+"%";
   const b=document.querySelector("#st"+clk.step+" b"); if (b) b.textContent=fmt(Math.max(0,sl));
   if (sl<=0 && !clkChimed[clk.step]){ clkChimed[clk.step]=true; ding("step"); const nx=PLAN[clk.step+1]; if (nx){ rb(`${p.name} time is up! Tap Next ▶ for ${nx.name}.`); $("clockNext").classList.add("go"); } else { rb("Time's up! You focused for 25 minutes. ⭐"); cheer("Time is up! You focused the whole time. Great work!"); ding("end"); } }
+  // pip, pip, pip: a soft tick every second for the last 3 minutes, louder in the last 10 seconds
+  const sec=Math.ceil(tl); if (tl>0 && tl<=180 && sec!==lastTick){ lastTick=sec; if (sec===180) { beep(1200,0.12,0.25); setTimeout(()=>beep(1200,0.12,0.25),200); setTimeout(()=>beep(1200,0.12,0.25),400); } else beep(sec<=10?1400:1000, sec<=10?0.1:0.05, sec<=10?0.25:0.08); }
   if (tl<=0 && !clkChimed.end){ clkChimed.end=true; ding("end"); cheer("Twenty-five minutes done! See you tomorrow!"); }
 }
 function gotoStep(i){ if (!clk) return; clk.step=Math.min(PLAN.length-1,i); clk.stepStart=Date.now(); store.set("pq.clock",clk); clkChimed[clk.step]=false; $("clockNext").classList.remove("go"); renderSteps(); const p=PLAN[clk.step]; showTab(p.tab); rb(`${p.name}: ${p.min} minutes. Go!`); if (p.id==="kata") startKatakana(); tick(); }
-$("clockStart").onclick=()=>{ clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb(`Let's go! ${PLAN[0].name} for ${PLAN[0].min} minutes.`); cheer("Let's go! Twenty-five minutes starts now."); tick(); };
+$("clockStart").onclick=()=>{ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); ac.resume(); }catch(e){} clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb(`Let's go! ${PLAN[0].name} for ${PLAN[0].min} minutes.`); cheer("Let's go! Twenty-five minutes starts now."); tick(); };
 $("clockNext").onclick=()=>{ if (!clk) return; if (clk.step>=PLAN.length-1){ $("clockReset").click(); return; } gotoStep(clk.step+1); };
 $("clockReset").onclick=()=>{ clk=null; store.set("pq.clock",null); clkChimed={}; $("clockStart").hidden=false; $("clockNext").hidden=true; $("clockReset").hidden=true; $("clockNext").classList.remove("go"); tick(); };
 (function(){ if (clk && Date.now()-clk.start > 90*60*1000){ clk=null; store.set("pq.clock",null); } if (clk){ $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; } renderSteps(); tick(); clkTimer=setInterval(tick,1000); })();
@@ -1005,9 +1035,9 @@ function wordKey(o){ return o.s; }
 function kataToHira(t){ return t.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-96)); }
 function speakJa(text){ if (!("speechSynthesis" in window)) return; loadVoices(); if (speechSynthesis.speaking||speechSynthesis.pending){ speechSynthesis.cancel(); setTimeout(()=>speakNow(text,"ja-JP"),120);} else speakNow(text,"ja-JP"); }
 function tapWord(o){
-  if (parentOn){ // grown-up marks a stumble
-    if (!reading && o.st==="miss"){ wordOK(o); return; }   // grown-up says it was fine
-    if (stumbles.has(o.i)){ stumbles.delete(o.i); o.el.classList.remove("stumble"); } else { stumbles.add(o.i); o.el.classList.add("stumble"); }
+  if (parentOn){ // Parent Check: tap a red word to make it green (it was read fine), tap a green word to make it red
+    if (o.st==="miss" || stumbles.has(o.i)){ stumbles.delete(o.i); o.el.classList.remove("stumble"); if (!reading) wordOK(o); else setSt(o,"ok"); showTip(o,"Parent: OK ✔"); }
+    else { stumbles.add(o.i); o.el.classList.add("stumble"); setSt(o,"miss"); showTip(o,"Parent: needs practice"); }
     return;
   }
   if (!reading && o.st==="miss"){ fixWord(o); return; }   // red word: Macha reads it, then the child says it
@@ -1105,19 +1135,15 @@ $("shadow").onclick=()=>{
   // Macha reads the whole story in one go (smooth), and the sentence being read is highlighted
   const sents=[]; let cur=[];
   for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
-  const text=rTok.map(o=>o.s).join("").replace(/\s+/g,"");
-  const starts=[]; let pos=0; for (const sn of sents){ starts.push(pos); pos+=sn.map(o=>o.s).join("").replace(/\s+/g,"").length; }
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
-  const u=new SpeechSynthesisUtterance(text); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; const v=jaVoice(); if (v) u.voice=v; lastU=u;
-  const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
-  const light=(k)=>{ clearNow(); if (sents[k]){ sents[k].forEach(o=>o.el.classList.add("now")); sents[k][0].el.scrollIntoView({block:"nearest",behavior:"smooth"}); } };
-  let k=0, gotBoundary=false, est=null; light(0);
-  u.onboundary=(e)=>{ if (typeof e.charIndex!=="number") return; gotBoundary=true; let j=0; while (j+1<starts.length && starts[j+1]<=e.charIndex) j++; if (j!==k){ k=j; light(k); } };
-  u.onstart=()=>{ const t0=Date.now(), perChar=(1000/ (u.rate*6.5));   // fallback timing when the device gives no boundary events
-    est=setInterval(()=>{ if (gotBoundary){ clearInterval(est); return; } const ch=(Date.now()-t0)/perChar; let j=0; while (j+1<starts.length && starts[j+1]<=ch) j++; if (j!==k){ k=j; light(k); } }, 200); };
-  const fin=()=>{ if (est) clearInterval(est); clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); };
-  u.onend=fin; u.onerror=fin;
-  rb("Listen and follow along. Then it's your turn."); setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} speechSynthesis.speak(u); },80);
+  const v=jaVoice(); const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
+  const us=sents.map((sn,k)=>{ const u=new SpeechSynthesisUtterance(sn.map(o=>o.s).join("").replace(/\s+/g,"")); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
+    u.onstart=()=>{ clearNow(); sn.forEach(o=>o.el.classList.add("now")); sn[0].el.scrollIntoView({block:"nearest",behavior:"smooth"}); };
+    if (k===sents.length-1){ u.onend=()=>{ clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); }; u.onerror=u.onend; }
+    return u; });
+  window.__shadowUs=us;   // keep references so the device does not drop queued sentences
+  rb("Listen and follow along. Then it's your turn.");
+  setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} us.forEach(u=>speechSynthesis.speak(u)); },80);
 };
 
 // ---------- read-aloud check (timer + on-device speech recognition when allowed)
