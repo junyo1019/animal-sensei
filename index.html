@@ -96,7 +96,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .cells.words button{aspect-ratio:auto;min-height:44px;font-size:clamp(14px,2vw,20px);padding:4px 6px}
 .cells button{aspect-ratio:1/1;border-radius:10px;background:var(--bg);font-family:var(--model);font-size:clamp(16px,3.2vw,26px);font-weight:600;position:relative}
 .cells button[aria-current="true"]{outline:3px solid var(--sea)}
-.cells button.done{background:var(--sun);color:var(--sun-ink)}
+.cells button.done,.cells.words button.kata.done{background:var(--sun);color:var(--sun-ink)}
 .cells button.done::after{content:"★";position:absolute;right:3px;top:0;font-size:10px;font-family:var(--body)}
 .cells .gap{visibility:hidden}
 
