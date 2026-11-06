@@ -132,6 +132,20 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .clock .bar{grid-column:1/-1;height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
 .clock .bar i{display:block;height:100%;width:0;background:var(--sea);transition:width 1s linear}
 @media (max-width:700px){.clock{grid-template-columns:1fr auto}.clock .steps{grid-column:1/-1}}
+.stamp{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:#FDE0DC;color:#B3261E;font-family:var(--display);font-weight:700;font-size:15px;border:2px solid #B3261E;transform:rotate(-3deg)}
+.stamp.half{background:var(--paper);color:var(--muted);border-color:var(--line);transform:none}
+.stampBig{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) rotate(-8deg) scale(.3);z-index:60;padding:18px 36px;border:6px solid #B3261E;border-radius:22px;color:#B3261E;background:rgba(255,255,255,.92);font-family:var(--display);font-weight:700;font-size:clamp(40px,8vw,88px);line-height:1.05;text-align:center;opacity:0;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.stampBig small{display:block;font-size:.4em;letter-spacing:.1em}
+.stampBig.on{animation:stampIn 2.6s ease-out forwards}
+@keyframes stampIn{0%{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(.3)}18%{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1.08)}28%{transform:translate(-50%,-50%) rotate(-8deg) scale(1)}80%{opacity:1}100%{opacity:0}}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:420px;margin:8px 0}
+.cal .h{font-size:11px;font-weight:800;color:var(--muted);text-align:center}
+.cal .d{aspect-ratio:1/1;border-radius:10px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted)}
+.cal .d.full{background:#FDE0DC;color:#B3261E;border:2px solid #B3261E}
+.cal .d.part{background:#FFF3C4;color:var(--sun-ink)}
+.cal .d.today{outline:2px dashed var(--sea)}
+.cal .d b{font-size:14px}
+.cal .d small{font-size:9px}
 .tabs{display:flex;gap:6px;background:var(--paper);border-radius:999px;padding:4px;width:max-content;margin:0 auto 12px}
 .tabs button{padding:8px 18px;border-radius:999px;font-family:var(--display);font-size:16px;font-weight:600;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
@@ -227,6 +241,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   </div>
   <div class="who" id="who" role="group" aria-label="Who is playing?"></div>
   <label class="grade"><span>Japanese</span><select id="gradeSel" aria-label="Japanese grade"><option value="1">1st Grade</option><option value="2">2nd Grade</option><option value="3">3rd Grade</option><option value="4">4th Grade</option><option value="5">5th Grade</option><option value="6">6th Grade</option></select></label>
+  <div class="stamp half" id="stamp" title="Today's progress">📅 Read · Write · Katakana</div>
   <div class="stars">⭐ <b id="starCount">0</b> stars</div>
   <button class="chip" id="openSafari" type="button">🧭 Open in Safari</button>
 </div>
@@ -382,6 +397,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 </div><!-- /readTab -->
 
 <div class="pop" id="pop" aria-hidden="true"><span>⭐️</span></div>
+<div class="stampBig" id="stampBig" aria-hidden="true"></div>
 
 <script>
 // ---- data: kana, stroke count, example word, romaji, English
@@ -430,7 +446,7 @@ function renderWho(){
     const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed", i===who);
     if(i===who){ const inp=document.createElement("input"); inp.id="name"+i; inp.value=p.name; inp.setAttribute("aria-label","Your name");
       inp.onchange=()=>{ profiles[i].name=inp.value.trim()||p.name; store.set("pq.profiles",profiles); }; b.appendChild(inp); }
-    else { b.textContent=p.name; b.onclick=()=>{ who=i; store.set("pq.who",who); renderWho(); syncGrade(); renderGrid(); renderStars(); renderPassageList(); loadPassage(pickPassageId()); showQuiz(); if (!$("writeTab").hidden) setWMode("story"); }; }
+    else { b.textContent=p.name; b.onclick=()=>{ who=i; store.set("pq.who",who); renderWho(); syncGrade(); renderGrid(); renderStars(); renderStamp(); renderPassageList(); loadPassage(pickPassageId()); showQuiz(); if (!$("writeTab").hidden) setWMode("story"); }; }
     w.appendChild(b);
   });
 }
@@ -738,7 +754,7 @@ function dailyKatakana(){
   if (st.date!==today()){ if (st.done) st.start=(st.start+2)%KATA.length; st.date=today(); st.done=false; rstore.set(key,st); }
   return [0,1].map(i=>{ const w=KATA[(st.start+i)%KATA.length]; return [w[0],0,w[0],kataToHira(w[0]),w[1],"w","kata"]; });
 }
-function markKataDone(){ const kw=LIST.filter(k=>k[6]==="kata"); const done=pdata().done; if (kw.length && kw.every(k=>done[k[0]])){ const st=rstore.get("kata.day",{date:today(),start:0,done:false}); st.done=true; rstore.set("kata.day",st); } }
+function markKataDone(){ const kw=LIST.filter(k=>k[6]==="kata"); const done=pdata().done; if (kw.length && kw.every(k=>done[k[0]])){ const st=rstore.get("kata.day",{date:today(),start:0,done:false}); st.done=true; rstore.set("kata.day",st); markDay("kata"); } }
 function startKatakana(){ if ($("writeTab").hidden) showTab("write"); const i=LIST.findIndex(k=>k[6]==="kata"); if (i>=0) show(i); rb("Daily Katakana! You know these words in English. Write them in katakana!"); }
 // every word in the story worth writing: kanji words and katakana words, in story order
 function storyWords(P){
@@ -764,7 +780,7 @@ function buildStoryList(){
 }
 function markSetDone(){
   const P=rp; if (!P) return; const done=pdata().done; const words=LIST.filter(k=>k[5]==="w" && k[6]!=="kata");
-  if (words.length && words.every(k=>done[k[0]])){ const key="wset."+P.id; const st=rstore.get(key,{date:today(),start:0,done:false}); if (!st.done){ st.done=true; rstore.set(key,st); setTimeout(()=>{ bubble.innerHTML=`<span class="big ok">All of today's words done! 🎉</span>Tomorrow there will be new words from the story. You can still do the ？ question now.`; cheer("All of today's words are done! New words tomorrow."); },1200); } }
+  if (words.length && words.every(k=>done[k[0]])){ const key="wset."+P.id; const st=rstore.get(key,{date:today(),start:0,done:false}); if (!st.done){ st.done=true; rstore.set(key,st); markDay("write"); setTimeout(()=>{ bubble.innerHTML=`<span class="big ok">All of today's words done! 🎉</span>Tomorrow there will be new words from the story. You can still do the ？ question now.`; cheer("All of today's words are done! New words tomorrow."); },1200); } }
 }
 function setWMode(m){
   wmode="story"; LIST=buildStoryList(); if (!LIST.length){ LIST=KANALIST; wmode="kana"; $("wmInfo").textContent="Kana practice"; }
@@ -866,7 +882,7 @@ $("copyLink").onclick=async ()=>{
 };
 // ---- boot
 function boot(){
-  renderWho(); syncGrade(); renderStars(); renderGrid(); show(0); size();
+  renderWho(); syncGrade(); renderStars(); renderStamp(); renderGrid(); show(0); size();
   if (document.fonts && document.fonts.load) document.fonts.load('600 100px "Klee One"').then(()=>{ drawGuide(); }).catch(()=>{});
   window.addEventListener("resize", size);
   try{ const mq=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)"); if (mq){ if (mq.addEventListener) mq.addEventListener("change", drawGuide); else if (mq.addListener) mq.addListener(drawGuide); } }catch(e){}
@@ -1248,6 +1264,7 @@ $("doneRead").onclick=()=>{
     if (pass && !was) giveStar(); }
   else { sessions.push({date:today(),sec,acc,taps:tapsThisRead,stumbles:stumbleWords,pass,blue:pass,reads:1}); rstore.set("sess."+rp.id,sessions); if (pass) giveStar(); }
   if (pass) cheer("Perfect! All blue! You read the whole story!");
+  markDay("read",{story:rp.title});
   $("result").innerHTML=msg; $("result").hidden=false;
   const day=Math.min(sessions.length,3); $("qs").hidden=day<2; $("writeQ").hidden=day<3; if (day>=2) renderQuestions(); if (day>=3){ $("wprompt").textContent=rp.write.q; }
   renderReport();
@@ -1373,6 +1390,35 @@ $("wcheck").onclick=async ()=>{
 };
 
 // ---------- grown-up report
+// ---------- the daily stamp: Read + Write + Katakana all done → a red "DONE" stamp with the date, kept forever
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function niceDate(d){ const [y,m,dd]=d.split("-"); return `${MONTHS[+m-1]} ${+dd}, ${y}`; }
+function dayLog(){ return rstore.get("days",{}); }
+function markDay(part, extra){
+  const log=dayLog(); const d=log[today()]||{}; d[part]=true; if (extra) Object.assign(d,extra); log[today()]=d; rstore.set("days",log);
+  const full=d.read&&d.write&&d.kata;
+  if (full && !d.stamped){ d.stamped=new Date().toISOString(); rstore.set("days",log); bigStamp(); cheer("All done for today! Stamp!"); }
+  renderStamp();
+}
+function renderStamp(){
+  const d=dayLog()[today()]||{}; const el=$("stamp"); const full=d.read&&d.write&&d.kata;
+  if (full){ el.className="stamp"; el.textContent=`✔ DONE · ${niceDate(today())}`; }
+  else { el.className="stamp half"; el.textContent=`📅 ${d.read?"✔":"○"} Read · ${d.write?"✔":"○"} Write · ${d.kata?"✔":"○"} Katakana`; }
+}
+function bigStamp(){ const b=$("stampBig"); b.innerHTML=`DONE!<small>${niceDate(today())}</small>`; b.classList.remove("on"); void b.offsetWidth; b.classList.add("on"); }
+function renderCalendar(){
+  const log=dayLog(); const now=new Date(); const y=now.getFullYear(), m=now.getMonth();
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  let h=`<p><b>${MONTHS[m]} ${y}</b> · ${Object.values(log).filter(x=>x.read&&x.write&&x.kata).length} full days so far</p><div class="cal">`;
+  for (const w of ["S","M","T","W","T","F","S"]) h+=`<div class="h">${w}</div>`;
+  for (let i=0;i<first;i++) h+=`<div></div>`;
+  for (let dd=1;dd<=days;dd++){ const key=`${y}-${String(m+1).padStart(2,"0")}-${String(dd).padStart(2,"0")}`; const d=log[key]; const full=d&&d.read&&d.write&&d.kata; const part=d&&(d.read||d.write||d.kata);
+    h+=`<div class="d ${full?"full":part?"part":""} ${key===today()?"today":""}"><b>${dd}</b>${full?"<small>DONE</small>":part?`<small>${(d.read?"R":"")+(d.write?"W":"")+(d.kata?"K":"")}</small>`:""}</div>`; }
+  h+=`</div>`;
+  const hist=Object.entries(log).filter(([k,v])=>v.read&&v.write&&v.kata).sort().reverse().slice(0,30);
+  if (hist.length) h+=`<p>Finished days: ${hist.map(([k,v])=>`${niceDate(k)}${v.story?" ("+esc(v.story)+")":""}`).join(" · ")}</p>`;
+  return h;
+}
 function renderReport(){
   const sessions=rstore.get("sess."+rp.id,[]); const cards=Object.values(rstore.get("cards",{})); const taps=rstore.get("taps",{}); const qa=rstore.get("qa."+rp.id,{});
   const learned=cards.filter(c=>c.streak>=3).length;
@@ -1384,6 +1430,7 @@ function renderReport(){
   h+=`<p>Words asked about (bold = gave up): ${tapped||"none yet"}</p>`;
   h+=`<p>Word cards: ${cards.length} · learned (3 days in a row): ${learned}</p>`;
   const qk=Object.keys(qa); if (qk.length) h+=`<p>Questions: ${qk.map(k=>k==="write"?("write "+(qa[k]?"✅":"✗")):("Q"+(+k+1)+" "+(qa[k]?"✅":"✗"))).join(" · ")}</p>`;
+  h+=renderCalendar();
   $("report").innerHTML=h;
 }
 
