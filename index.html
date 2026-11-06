@@ -156,6 +156,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .tip small{opacity:.8;font-size:12px}
 .tip::after{content:"";position:absolute;left:50%;bottom:-8px;margin-left:-8px;border:8px solid transparent;border-top-color:var(--ink);border-bottom:0}
 .passage ruby rt{font-size:13px}
+.passage .w{scroll-margin-top:150px}
 .rside{display:flex;flex-direction:column;gap:10px;position:sticky;top:8px}
 .rside .coach{align-items:flex-start}
 .rside .coach svg{flex:0 0 64px;width:64px;height:72px}
@@ -1151,7 +1152,7 @@ $("shadow").onclick=()=>{
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
   const v=jaVoice(); const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
   const us=sents.map((sn,k)=>{ const u=new SpeechSynthesisUtterance(sn.map(o=>o.s).join("").replace(/\s+/g,"")); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
-    u.onstart=()=>{ clearNow(); sn.forEach(o=>o.el.classList.add("now")); sn[0].el.scrollIntoView({block:"nearest",behavior:"smooth"}); };
+    u.onstart=()=>{ clearNow(); sn.forEach(o=>o.el.classList.add("now")); keepVisible(sn[0].el); };
     if (k===sents.length-1){ u.onend=()=>{ clearNow(); rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); }; u.onerror=u.onend; }
     return u; });
   window.__shadowUs=us;   // keep references so the device does not drop queued sentences
@@ -1319,12 +1320,14 @@ function judge(heard){
   }
   return {last, st:rTok.map(o=> o.i>last ? "" : (o.kanji ? (hit[o.i]?"ok":"miss") : "ok"))};
 }
+// scroll only when the word is hidden (behind the sticky clock, or below the screen)
+function keepVisible(el){ const r=el.getBoundingClientRect(); const top=$("clock").getBoundingClientRect().bottom+8; if (r.top<top || r.bottom>window.innerHeight-20) window.scrollBy({top:r.top-top-40, behavior:"smooth"}); }
 function paintProgress(heard){
   if (!heard.replace(/[\s、。「」！？!?,.]/g,"")) return;
   const r=judge(heard);
   rTok.forEach(o=>{ o.el.classList.remove("cursor"); setSt(o, (o.kanji && stumbles.has(o.i)) ? "miss" : r.st[o.i]); });
   const nextTok = rTok.find(o=>o.i>r.last && o.s.trim());
-  if (nextTok){ nextTok.el.classList.add("cursor"); nextTok.el.scrollIntoView({block:"nearest",behavior:"smooth"}); }
+  if (nextTok){ nextTok.el.classList.add("cursor"); keepVisible(nextTok.el); }
   $("rbar").style.width = Math.round(100*(r.last+1)/rTok.length)+"%";
 }
 // character-level alignment of what was heard against the story surface text
