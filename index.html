@@ -118,14 +118,14 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .clock.over{border-color:#B3261E}.clock.over .big{color:#B3261E;animation:blink 1s steps(2,start) infinite}
 @keyframes blink{to{opacity:.55}}
 @media (prefers-reduced-motion:reduce){.clock.over .big{animation:none}}
-.clock .big{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,64px);line-height:1;letter-spacing:.04em;color:var(--sea);font-variant-numeric:tabular-nums;min-width:4.2ch}
+.clock .big{font-family:var(--display);font-weight:700;font-size:clamp(48px,7vw,76px);line-height:1;letter-spacing:.04em;color:var(--sea);font-variant-numeric:tabular-nums;min-width:4.2ch}
 .clock .lbl{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.08em}
 .clock .steps{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .clock .st{display:flex;flex-direction:column;align-items:center;padding:6px 12px;border-radius:14px;background:var(--bg);font-size:13px;font-weight:800;color:var(--muted);min-width:76px}
 .clock .st b{font-family:var(--display);font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
 .clock .st.now{background:var(--sun);color:var(--sun-ink)}.clock .st.now b{color:var(--sun-ink)}
 .clock .st.done{opacity:.45;text-decoration:line-through}
-.clock .ctl{display:flex;gap:6px}
+.clock .ctl{display:flex;gap:6px;grid-column:3;justify-self:end}
 .clock .ctl button{padding:10px 14px;border-radius:14px;background:var(--bg);font-size:14px;font-weight:800}
 .clock .ctl .snd{font-size:18px;padding:8px 10px}
 .clock .ctl .go{background:var(--sun);color:var(--sun-ink);font-family:var(--display);font-size:16px;font-weight:700}
@@ -241,8 +241,8 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 
 <div class="clock" id="clock" aria-live="off">
   <div><div class="lbl" id="clockLbl">TODAY · 25 MIN</div><div class="big" id="clockBig">25:00</div></div>
-  <div class="steps" id="clockSteps"></div>
-  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 25 min</button><button type="button" id="clockNext" hidden>Next ▶</button><button type="button" id="clockReset" hidden>Reset</button><button type="button" class="snd" id="clockSound" title="Countdown sound">🔔</button></div>
+  <div class="steps" id="clockSteps" hidden></div>
+  <div class="ctl"><button type="button" class="go" id="clockStart">▶ Start 25 min</button><button type="button" id="clockNext" hidden style="display:none">Next ▶</button><button type="button" id="clockReset" hidden>Reset</button><button type="button" class="snd" id="clockSound" title="Countdown sound">🔔</button></div>
   <div class="bar"><i id="clockBar"></i></div>
 </div>
 <nav class="tabs" role="tablist">
@@ -962,17 +962,16 @@ function ding(kind){ if (!clkSound) return; try{ const ac=new (window.AudioConte
 function tick(){
   const c=$("clock"); if (!clk){ $("clockBig").textContent=fmt(TOTAL_MIN*60); $("clockLbl").textContent=`TODAY · ${TOTAL_MIN} MIN`; c.className="clock"; $("clockBar").style.width="0"; renderSteps(); return; }
   const tl=totalLeft(), sl=stepLeft(), p=PLAN[clk.step];
-  $("clockBig").textContent=fmt(tl); $("clockLbl").textContent=`${p.name.toUpperCase()} · ${fmt(Math.max(0,sl))} LEFT`;
+  $("clockBig").textContent=fmt(tl); $("clockLbl").textContent=tl>0?"FOCUS TIME · LEFT":"TIME'S UP";
   c.className="clock on"+(tl<=300&&tl>180?" low":"")+(tl<=180?" over":"");
   $("clockBar").style.width=Math.min(100, 100*(1-tl/(TOTAL_MIN*60)))+"%";
   const b=document.querySelector("#st"+clk.step+" b"); if (b) b.textContent=fmt(Math.max(0,sl));
-  if (sl<=0 && !clkChimed[clk.step]){ clkChimed[clk.step]=true; ding("step"); const nx=PLAN[clk.step+1]; if (nx){ rb(`${p.name} time is up! Tap Next ▶ for ${nx.name}.`); $("clockNext").classList.add("go"); } else { rb("Time's up! You focused for 25 minutes. ⭐"); cheer("Time is up! You focused the whole time. Great work!"); ding("end"); } }
   // pip, pip, pip: a soft tick every second for the last 3 minutes, louder in the last 10 seconds
   const sec=Math.ceil(tl); if (tl>0 && tl<=180 && sec!==lastTick){ lastTick=sec; if (sec===180) { beep(1200,0.12,0.25); setTimeout(()=>beep(1200,0.12,0.25),200); setTimeout(()=>beep(1200,0.12,0.25),400); } else beep(sec<=10?1400:1000, sec<=10?0.1:0.05, sec<=10?0.25:0.08); }
-  if (tl<=0 && !clkChimed.end){ clkChimed.end=true; ding("end"); cheer("Twenty-five minutes done! See you tomorrow!"); }
+  if (tl<=0 && !clkChimed.end){ clkChimed.end=true; ding("end"); rb("Time's up! You focused for 25 minutes. ⭐"); cheer("Time is up! You focused the whole time. Great work! See you tomorrow!"); }
 }
 function gotoStep(i){ if (!clk) return; clk.step=Math.min(PLAN.length-1,i); clk.stepStart=Date.now(); store.set("pq.clock",clk); clkChimed[clk.step]=false; $("clockNext").classList.remove("go"); renderSteps(); const p=PLAN[clk.step]; showTab(p.tab); rb(`${p.name}: ${p.min} minutes. Go!`); if (p.id==="kata") startKatakana(); tick(); }
-$("clockStart").onclick=()=>{ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); ac.resume(); }catch(e){} clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb(`Let's go! ${PLAN[0].name} for ${PLAN[0].min} minutes.`); cheer("Let's go! Twenty-five minutes starts now."); tick(); };
+$("clockStart").onclick=()=>{ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); ac.resume(); }catch(e){} clk={start:Date.now(),step:0,stepStart:Date.now()}; clkChimed={}; store.set("pq.clock",clk); $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; renderSteps(); showTab("read"); rb("Let's go! 25 minutes of focus. Start with reading."); cheer("Let's go! Twenty-five minutes starts now."); autoRead(); tick(); };
 $("clockNext").onclick=()=>{ if (!clk) return; if (clk.step>=PLAN.length-1){ $("clockReset").click(); return; } gotoStep(clk.step+1); };
 $("clockReset").onclick=()=>{ clk=null; store.set("pq.clock",null); clkChimed={}; $("clockStart").hidden=false; $("clockNext").hidden=true; $("clockReset").hidden=true; $("clockNext").classList.remove("go"); tick(); };
 (function(){ if (clk && Date.now()-clk.start > 90*60*1000){ clk=null; store.set("pq.clock",null); } if (clk){ $("clockStart").hidden=true; $("clockNext").hidden=false; $("clockReset").hidden=false; } renderSteps(); tick(); clkTimer=setInterval(tick,1000); })();
@@ -985,7 +984,7 @@ function showTab(name){
   if (!w){ renderPassageList(); loadPassage(pickPassageId()); showQuiz(); }
   else { if (!rp){ renderPassageList(); loadPassage(pickPassageId()); } setWMode("story"); requestAnimationFrame(size); }
 }
-$("tabWrite").onclick=()=>showTab("write"); $("tabRead").onclick=()=>showTab("read");
+$("tabWrite").onclick=()=>showTab("write"); $("tabRead").onclick=()=>{ showTab("read"); autoRead(); };
 try{ $("machaRead").outerHTML = document.querySelector("#writeTab .coach svg").outerHTML; }catch(e){}
 
 // ---------- passages
@@ -993,7 +992,16 @@ function renderPassageList(){
   const sel=$("passageSel"); sel.innerHTML="";
   for (const p of visiblePassages()){ const o=document.createElement("option"); o.value=p.id; o.textContent=p.title; sel.appendChild(o); }
 }
-$("passageSel").onchange=()=>loadPassage($("passageSel").value);
+$("passageSel").onchange=()=>{ autoArmed=true; loadPassage($("passageSel").value); };
+// Macha reads the story first, by herself, the first time it opens each day (after any tap, since iPad needs one before it will speak)
+let autoArmed=false, autoTimer=null;
+document.addEventListener("pointerdown",()=>{ autoArmed=true; },{once:false});
+function autoRead(){
+  if (!rp || $("readTab").hidden || reading) return;
+  const key="auto."+rp.id; if (rstore.get(key,null)===today()) return;
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(()=>{ if (!autoArmed || $("readTab").hidden || reading) return; rstore.set(key,today()); $("shadow").click(); }, 700);
+}
 
 function loadPassage(id){
   rp = allPassages().find(p=>p.id===id) || visiblePassages()[0];
@@ -1025,7 +1033,8 @@ function loadPassage(id){
   $("qs").hidden = day<2; $("writeQ").hidden = day<3;
   if (day>=2) renderQuestions();
   if (day>=3){ $("wprompt").textContent=rp.write.q; $("wans").value=""; $("wfeedback").hidden=true; }
-  rb(day===1 ? "New story! Tap 🐼 and I'll read it first. Then you read it." : `Welcome back! Last time: ${fmtSess(sessions[sessions.length-1])}. Let's beat it.`);
+  rb(day===1 ? "New story! Listen to me first, then you read it." : `Welcome back! Last time: ${fmtSess(sessions[sessions.length-1])}. Let's beat it.`);
+  autoRead();
   renderReport();
 }
 function fmtSess(s){ return s ? `${s.sec}s, ${s.acc==null?"no mic":s.acc+"% right"}, ${s.taps} help taps` : "—"; }
