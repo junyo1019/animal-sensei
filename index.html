@@ -1176,7 +1176,7 @@ function speakFrom(k){
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
   const v=jaVoice(); const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
   const light=(j)=>{ clearNow(); if (!sents[j]) return; shadowK=j; sents[j].forEach(o=>o.el.classList.add("now")); keepVisible(sents[j][0].el); };
-  const us=[]; for (let j=k;j<sents.length;j++){ const sn=sents[j]; const u=new SpeechSynthesisUtterance(sn.map(o=>o.s).join("").replace(/\s+/g,"")); u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
+  const us=[]; for (let j=k;j<sents.length;j++){ const sn=sents[j]; const u=new SpeechSynthesisUtterance(sn.map(o=>o.kanji?o.r:o.s).join("").replace(/\s+/g,""));   // speak the furigana reading, so a kanji split from its word (牛/にゅう) is never misread (うし) u.lang="ja-JP"; u.rate=0.9; u.pitch=MACHA_PITCH; if (v) u.voice=v;
     u.onstart=()=>{ if (!shadowPaused) light(j); };
     u.onend=()=>{ if (shadowPaused) return; if (j<sents.length-1) light(j+1); else { clearNow(); shadowOn=false; $("pauseRead").hidden=true; rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); } };
     u.onerror=()=>{};
