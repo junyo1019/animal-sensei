@@ -207,6 +207,11 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .passage .w.stumble{background:#FDE2D3}
 .passage .w.flash{background:#D7F0DF;animation:flash 1.2s ease-in-out 3}
 .passage .w.now{background:#D7F0DF;outline:2px solid var(--sun);outline-offset:1px}
+/* highlight boxes are always light, so their text is always dark (white text vanished on them in dark mode) */
+.passage .w.now,.passage .w.show,.passage .w.flash,.passage .w.stumble{color:#1F2A33}
+.passage .w.read{color:#1E7A45}
+.passage .w.miss,.passage .w.miss.now,.passage .w.miss.show,.passage .w.miss.flash{color:#B3261E}
+.passage .w.blue{color:#1B5FB0}
 .passage ruby rt{font-family:var(--body);font-size:12px;color:var(--sea);visibility:hidden;font-weight:800}
 .passage .s{display:inline}
 @keyframes flash{50%{background:#8FD3A6}}
