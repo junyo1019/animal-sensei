@@ -377,7 +377,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 
   <section class="qs" id="qsLock" hidden>
     <h2>Questions 🔒</h2>
-    <p>Questions open on <b>Day 2</b>. Today, read the story well. Come back tomorrow to answer 3 questions!</p>
+    <p>Read the story, then tap <b>✅ Done</b>. Your 3 questions open right away!</p>
   </section>
 
   <section class="qs" id="qs" hidden>
@@ -1300,9 +1300,12 @@ $("doneRead").onclick=()=>{
   try{ rstore.set("heard."+rp.id, transcript.trim().slice(0,400)); }catch(e){}
   markDay("read",{story:rp.title});
   $("result").innerHTML=msg; $("result").hidden=false;
-  const day=Math.min(sessions.length,3); $("qs").hidden=day<2; $("writeQ").hidden=day<3; if (day>=2) renderQuestions(); if (day>=3){ $("wprompt").textContent=rp.write.q; }
+  $("qs").hidden=false; $("qsLock").hidden=true; renderQuestions(); setTimeout(()=>{ try{ $("qs").scrollIntoView({block:"start",behavior:"smooth"}); }catch(e){} }, 900);   /* fast track: questions right after ✅ Done, on any day */
+  if (Math.min(sessions.length,3)>=3 || allAnswered()) openWrite();
   renderReport();
 };
+function allAnswered(){ const a=rstore.get("qa."+rp.id,{}); return rp.qs.every((q,i)=>i in a); }
+function openWrite(){ const w=$("writeQ"); if (!w.hidden) return; $("wprompt").textContent=rp.write.q; $("wans").value=""; $("wfeedback").hidden=true; w.hidden=false; }
 function giveStar(){ const d=pdata(); d.stars=(d.stars||0)+1; savep(d); renderStars(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on"); }
 
 // ---- red word: Macha reads it, the child says it, it turns green
@@ -1406,7 +1409,7 @@ function renderQuestions(){
     d.innerHTML=`<div class="qt">${qi+1}. ${esc(q.q)}</div><div class="opts"></div><div class="why" hidden></div>`;
     const ob=d.querySelector(".opts"), why=d.querySelector(".why");
     q.opts.forEach((o,oi)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=["ア","イ","ウ"][oi]+" "+o;
-      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! ⭕"; cheer("Right!"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); };
+      b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! ⭕"; cheer("Right!"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); if (allAnswered() && $("writeQ").hidden){ openWrite(); setTimeout(()=>{ rb("Great! Now write about it ✏️"); try{ $("writeQ").scrollIntoView({block:"start",behavior:"smooth"}); }catch(e){} }, 1200); } };
       ob.appendChild(b); });
     box.appendChild(d);
   });
