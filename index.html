@@ -375,6 +375,11 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
     </aside>
   </section>
 
+  <section class="qs" id="qsLock" hidden>
+    <h2>Questions 🔒</h2>
+    <p>Questions open on <b>Day 2</b>. Today, read the story well. Come back tomorrow to answer 3 questions!</p>
+  </section>
+
   <section class="qs" id="qs" hidden>
     <h2>Questions</h2>
     <div id="qlist"></div>
@@ -1066,7 +1071,7 @@ function loadPassage(id){
   const sessions = rstore.get("sess."+rp.id, []);
   const day = Math.min(sessions.length+1, 3);
   $("plan").textContent = `Day ${day} of 3 · ` + (day===1?"Macha reads, then you read":day===2?"Read again, then answer questions":"Read, then write about it");
-  $("qs").hidden = day<2; $("writeQ").hidden = day<3;
+  $("qs").hidden = day<2; $("qsLock").hidden = day>=2; $("writeQ").hidden = day<3;
   if (day>=2) renderQuestions();
   if (day>=3){ $("wprompt").textContent=rp.write.q; $("wans").value=""; $("wfeedback").hidden=true; }
   rb(day===1 ? "New story! Listen to me first, then you read it." : `Welcome back! Last time: ${fmtSess(sessions[sessions.length-1])}. Let's beat it.`);
