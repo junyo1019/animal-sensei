@@ -1346,10 +1346,10 @@ const canon = t => t.replace(/[一-鿿]/g,c=>HOMO[c]||c);
 const ALT={"友だち":"友達","子ども":"子供","日よう日":"日曜日","きゅう食":"給食","ごはん":"ご飯","気もち":"気持ち","長ぐつ":"長靴","かさ":"傘","見つけました":"見付けました","拾いました":"ひろいました","持ち物":"持ちもの","お姉さん":"おねえさん","お兄さん":"おにいさん","日直":"にっちょく","当番":"とうばん","上手":"じょうず","元気":"げんき","苦手":"にがて","黄色":"きいろ","一つ":"ひとつ","二人":"ふたり","一行":"いちぎょう","十":"じゅう","三":"さん","一":"いち","三つ":"みっつ","二つ":"ふたつ","持った":"待った","持って":"待って","開いて":"あいて","重い":"おもい","笑って":"わらって","自動":"じどう"};
 function altForms(o){ return ALT[o.s] ? ALT[o.s].split("|") : []; }
 function judge(heard){
-  const h=canon(normHeard(heard)).replace(/[\s、。「」！？!?,.]/g,""); let hpos=0, last=-1; const hit={};
+  const h=canon(normHeard(heard)).replace(/[\s、。「」！？!?,.]/g,""); let hpos=0, last=-1, debt=0; const hit={};
   for (const o of rTok){
     const surf=canon(o.s).replace(/[\s、。「」！？]/g,""); if (!surf) continue;
-    const win=h.slice(hpos, hpos+surf.length+12);
+    const win=h.slice(hpos, hpos+surf.length+12+debt);   // debt: text skipped since the last match (e.g. くばります heard as 配ります) widens the search so one miss never blocks the rest
     let at=win.indexOf(surf), len=surf.length;
     if (at<0 && o.kanji){ at=win.indexOf(o.r); len=o.r.length; }                 // heard as kana
     if (at<0 && o.kata){ at=win.indexOf(kataToHira(surf)); len=surf.length; }   // katakana heard as hiragana
@@ -1357,7 +1357,7 @@ function judge(heard){
     if (at<0 && o.kanji){   // kanji + okurigana in the story, but the recognizer wrote the whole word in kanji (友だち → 友達)
       const m=surf.match(/^([一-鿿]+)([぀-ゟ]{2,})$/); if (m){ const j=win.indexOf(m[1]); if (j>=0 && j<=2 && /[一-鿿]/.test(win[j+m[1].length]||"")){ at=j; len=m[1].length+1; } } }
     if (at<0 && !o.kanji && surf.length>=3){ const part=surf.slice(0,2); at=win.indexOf(part); len=part.length; }   // kana words: loose
-    if (at>=0){ hpos+=at+len; hit[o.i]=1; last=o.i; }
+    if (at>=0){ hpos+=at+len; hit[o.i]=1; last=o.i; debt=0; } else debt+=(o.kanji?o.r.length:surf.length);
   }
   return {last, st:rTok.map(o=> o.i>last ? "" : (o.kanji ? (hit[o.i]?"ok":"miss") : "ok"))};
 }
@@ -1376,14 +1376,14 @@ function align(heard){
   const h=heard.replace(/[\s、。「」！？!?,.]/g,"");
   const toks=rTok.filter(o=>o.kanji);
   if (!h||!toks.length) return {acc:0,missed:toks};
-  let hpos=0, ok=0; const missed=[];
+  let hpos=0, ok=0, debt=0; const missed=[];
   for (const o of rTok){
     const surf=o.s.replace(/[\s、。「」！？]/g,""); if (!surf) continue;
-    const win=h.slice(hpos, hpos+surf.length+14);
+    const win=h.slice(hpos, hpos+surf.length+14+debt);
     let at=win.indexOf(surf), len=surf.length;
     if (at<0 && o.kanji){ at=win.indexOf(o.r); len=o.r.length; }
     if (at<0 && surf.length>=3){ const part=surf.slice(0,2); at=win.indexOf(part); len=part.length; }
-    if (at>=0){ hpos+=at+len; if (o.kanji) ok++; } else if (o.kanji) missed.push(o);
+    if (at>=0){ hpos+=at+len; debt=0; if (o.kanji) ok++; } else { debt+=(o.kanji?o.r.length:surf.length); if (o.kanji) missed.push(o); }
   }
   return {acc: Math.round(100*ok/toks.length), missed};
 }
