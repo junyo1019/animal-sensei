@@ -710,8 +710,8 @@ $("check").onclick=()=>{
       cheer("Nice tracing! Now write it by yourself.");
       strokes=[]; setStep(2); redraw(); markCells([]); return;
     }
-    bubble.innerHTML = `<span class="big mid">Almost!</span>The orange boxes are cleared. Trace those again, then tap Check!<br>${detail}`;
-    cheer("Almost! Trace the orange boxes again."); clearCells(bad); return;
+    bubble.innerHTML = `<span class="big low">Not quite.</span>The orange boxes were wrong, so I cleared them. Trace those again, then tap Check!<br>${detail}`;
+    cheer("Not quite. Trace the orange boxes again."); clearCells(bad); return;
   }
   if (!bad.length && !guideOn){
     const d=pdata(); d.done[k[0]]=true; d.stars=(d.stars||0)+1; savep(d);
@@ -724,8 +724,8 @@ $("check").onclick=()=>{
     cheer("Looking good! Now try it without the example.");
   } else {
     const allNear = bad.every(i=>rs[i].near);
-    bubble.innerHTML = `<span class="big ${allNear?"mid":"low"}">${allNear?"Nice!":"Almost!"}</span>The orange boxes are cleared. Write those again. You can turn the example on for a peek.<br>${detail}`;
-    cheer((allNear?"Nice! ":"Almost! ")+"Write the orange boxes again."); clearCells(bad);
+    bubble.innerHTML = `<span class="big low">${allNear?"Not quite.":"That's not right."}</span>The orange boxes were wrong, so I cleared them. Write those again. You can turn the example on for a peek.<br>${detail}`;
+    cheer((allNear?"Not quite. ":"That's not right. ")+"Write the orange boxes again."); clearCells(bad);
   }
 };
 
