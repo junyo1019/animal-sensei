@@ -396,6 +396,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
       <div class="rtools">
         <button class="chip" id="shadow" type="button">🐼 Macha reads first</button>
         <button class="chip" id="pauseRead" type="button" hidden>⏸ Pause</button>
+        <button class="chip" id="kidVoice" type="button" aria-pressed="true" title="Macha's voice">🧒 Kid voice: On</button>
         <button class="chip go" id="startRead" type="button">🎤 Start reading</button>
         <button class="chip go" id="doneRead" type="button" hidden>✅ Done</button>
         <button class="chip" id="parentMode" type="button" aria-pressed="false">👨‍👩‍👧 Parent Check</button>
@@ -1365,18 +1366,33 @@ function sayText(sn){ return sn.map(o=>{ if (!o.kanji) return o.s; return (o.s.l
 // ---- Macha's story voice: natural neural speech from Animal Sensei's own voice service (MeloTTS on Cloudflare Workers AI; MIT license, no credit line needed).
 // Each sentence is fetched as audio and played with Web Audio. If the service can't be reached, the device's built-in voice reads instead.
 const VOICE_URL="https://animal-sensei-voice.junyo1019.workers.dev/";
-const cv={ ctx:null, clips:new Map(), src:null, done:null, token:0, ok:!!(window.AudioContext||window.webkitAudioContext),
+const KID_RATE=1.24;   // 1 = the recorded adult voice; higher = younger (about +4 semitones here)
+function stretchSamples(x, sr, r){   // returns x made r times longer without changing its pitch
+  const W=Math.round(sr*0.04)&~1, Hs=W>>1, Ha=Hs/r, D=Math.round(sr*0.008), N=x.length, outLen=Math.ceil(N*r)+W, y=new Float32Array(outLen), win=new Float32Array(W);
+  for (let i=0;i<W;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/W);
+  let prev=0;
+  for (let k=0;;k++){ const ideal=Math.round(k*Ha); if (ideal+W+D>=N) break; let pos=ideal;
+    if (k>0){ const nat=prev+Hs; let best=-Infinity; if (nat+W<N) for (let d=-D;d<=D;d+=2){ const q=ideal+d; if (q<0) continue; let c=0; for (let i=0;i<Hs;i+=4) c+=x[q+i]*x[nat+i]; if (c>best){ best=c; pos=q; } } }
+    const o=k*Hs; for (let i=0;i<W;i++) y[o+i]+=x[pos+i]*win[i]; prev=pos; }
+  return y;
+}
+function kidBuffer(ctx, buf){ const sr=buf.sampleRate, y=stretchSamples(buf.getChannelData(0), sr, KID_RATE); const out=ctx.createBuffer(1, y.length, sr); out.getChannelData(0).set(y); return out; }
+const cv={ kid:store.get("pq.kidVoice",true), ctx:null, clips:new Map(), src:null, done:null, token:0, ok:!!(window.AudioContext||window.webkitAudioContext),
   unlock(){ if (!this.ok) return; try{ if (!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if (this.ctx.state!=="running") this.ctx.resume(); }catch(e){ this.ok=false; } },
   get(text){   // one download per sentence, kept for this visit
     if (!this.clips.has(text)){ const p=(async()=>{ const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),12000);
         try{ const r=await fetch(VOICE_URL+"?t="+encodeURIComponent(text),{signal:ctl.signal}); if (!r.ok) throw new Error("voice "+r.status); const ab=await r.arrayBuffer(); if (!this.ctx) this.unlock();
-          return await new Promise((res,rej)=>{ const t2=setTimeout(()=>rej(new Error("decode timeout")),6000); this.ctx.decodeAudioData(ab,b=>{ clearTimeout(t2); res(b); },e=>{ clearTimeout(t2); rej(e); }); }); } finally{ clearTimeout(to); } })();
+          const raw=await new Promise((res,rej)=>{ const t2=setTimeout(()=>rej(new Error("decode timeout")),6000); this.ctx.decodeAudioData(ab,b=>{ clearTimeout(t2); res(b); },e=>{ clearTimeout(t2); rej(e); }); });
+          let kid=null; try{ kid=kidBuffer(this.ctx, raw); }catch(e){} return {raw, kid}; } finally{ clearTimeout(to); } })();
       p.catch(()=>this.clips.delete(text)); this.clips.set(text,p); }
     return this.clips.get(text); },
   stop(){ this.token++; if (this.src){ try{ this.src.onended=null; this.src.stop(); }catch(e){} this.src=null; } if (this.done){ const d=this.done; this.done=null; d(); } },
-  playBuffer(buf){ return new Promise(res=>{ const n=this.ctx.createBufferSource(); n.buffer=buf; n.connect(this.ctx.destination); this.src=n; this.done=res; n.onended=()=>{ if (this.src===n){ this.src=null; this.done=null; res(); } }; n.start(); }); }
+  playBuffer(clip){ return new Promise(res=>{ const n=this.ctx.createBufferSource(); const useKid=this.kid && clip.kid; n.buffer=useKid?clip.kid:clip.raw; n.playbackRate.value=useKid?KID_RATE:1; n.connect(this.ctx.destination); this.src=n; this.done=res; n.onended=()=>{ if (this.src===n){ this.src=null; this.done=null; res(); } }; n.start(); }); }
 };
 document.addEventListener("pointerdown",()=>cv.unlock(),{passive:true});
+function renderKid(){ const b=$("kidVoice"); b.textContent=cv.kid?"🧒 Kid voice: On":"🧑 Kid voice: Off"; b.setAttribute("aria-pressed",cv.kid); }
+$("kidVoice").onclick=()=>{ cv.kid=!cv.kid; store.set("pq.kidVoice",cv.kid); renderKid(); if (shadowOn && !shadowPaused){ const k=shadowK; cv.stop(); speakFrom(k); } else rb(cv.kid?"Kid voice is on. Tap 🐼 to hear it.":"Kid voice is off. Tap 🐼 to hear the grown-up voice."); };
+renderKid();
 function shadowSplit(){ const sents=[]; let cur=[];
   for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur); return sents; }
 function shadowClear(){ document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); }
