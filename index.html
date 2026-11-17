@@ -396,7 +396,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
       <div class="rtools">
         <button class="chip" id="shadow" type="button">🐼 Macha reads first</button>
         <button class="chip" id="pauseRead" type="button" hidden>⏸ Pause</button>
-        <button class="chip" id="readSpeed" type="button" title="How fast Macha reads">🐢 Slow</button>
+        <button class="chip" id="readSpeed" type="button" title="How fast Macha reads">🐢 Medium</button>
         <button class="chip go" id="startRead" type="button">🎤 Start reading</button>
         <button class="chip go" id="doneRead" type="button" hidden>✅ Done</button>
         <button class="chip" id="parentMode" type="button" aria-pressed="false">👨‍👩‍👧 Parent Check</button>
@@ -1377,7 +1377,7 @@ function stretchSamples(x, sr, r){   // returns x made r times longer without ch
   return y;
 }
 // reading speed: how many times longer each sentence lasts than the recording (1 = as recorded). The pitch does not change.
-const SPEEDS=[[1.45,"🐢 Slow"],[1.8,"🐌 Very slow"],[1,"🐇 Normal"]];
+const SPEEDS=[[1.45,"🐢 Medium"],[1.8,"🐌 Slow"],[1,"🐇 Fast"]];
 function voiceBuffer(ctx, clip){   // the clip stretched for the chosen speed (and for the kid voice), made once and kept
   const f=cv.speed*(cv.kid?KID_RATE:1), key=f.toFixed(3); if (Math.abs(f-1)<0.01) return clip.raw; if (clip.v[key]) return clip.v[key];
   const sr=clip.raw.sampleRate, y=stretchSamples(clip.raw.getChannelData(0), sr, f); const out=ctx.createBuffer(1, y.length, sr); out.getChannelData(0).set(y); clip.v={[key]:out}; return out; }
