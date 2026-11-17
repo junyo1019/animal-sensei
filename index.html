@@ -396,7 +396,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
       <div class="rtools">
         <button class="chip" id="shadow" type="button">🐼 Macha reads first</button>
         <button class="chip" id="pauseRead" type="button" hidden>⏸ Pause</button>
-        <button class="chip" id="kidVoice" type="button" aria-pressed="true" title="Macha's voice">🧒 Kid voice: On</button>
+        <button class="chip" id="readSpeed" type="button" title="How fast Macha reads">🐢 Slow</button>
         <button class="chip go" id="startRead" type="button">🎤 Start reading</button>
         <button class="chip go" id="doneRead" type="button" hidden>✅ Done</button>
         <button class="chip" id="parentMode" type="button" aria-pressed="false">👨‍👩‍👧 Parent Check</button>
@@ -1376,23 +1376,27 @@ function stretchSamples(x, sr, r){   // returns x made r times longer without ch
     const o=k*Hs; for (let i=0;i<W;i++) y[o+i]+=x[pos+i]*win[i]; prev=pos; }
   return y;
 }
-function kidBuffer(ctx, buf){ const sr=buf.sampleRate, y=stretchSamples(buf.getChannelData(0), sr, KID_RATE); const out=ctx.createBuffer(1, y.length, sr); out.getChannelData(0).set(y); return out; }
-const cv={ kid:store.get("pq.kidVoice",true), ctx:null, clips:new Map(), src:null, done:null, token:0, ok:!!(window.AudioContext||window.webkitAudioContext),
+// reading speed: how many times longer each sentence lasts than the recording (1 = as recorded). The pitch does not change.
+const SPEEDS=[[1.45,"🐢 Slow"],[1.8,"🐌 Very slow"],[1,"🐇 Normal"]];
+function voiceBuffer(ctx, clip){   // the clip stretched for the chosen speed (and for the kid voice), made once and kept
+  const f=cv.speed*(cv.kid?KID_RATE:1), key=f.toFixed(3); if (Math.abs(f-1)<0.01) return clip.raw; if (clip.v[key]) return clip.v[key];
+  const sr=clip.raw.sampleRate, y=stretchSamples(clip.raw.getChannelData(0), sr, f); const out=ctx.createBuffer(1, y.length, sr); out.getChannelData(0).set(y); clip.v={[key]:out}; return out; }
+const cv={ kid:true /* Macha always reads in the kid voice */, speed:(()=>{ const v=store.get("pq.readSpeed",SPEEDS[0][0]); return SPEEDS.some(x=>x[0]===v)?v:SPEEDS[0][0]; })(), ctx:null, clips:new Map(), src:null, done:null, token:0, ok:!!(window.AudioContext||window.webkitAudioContext),
   unlock(){ if (!this.ok) return; try{ if (!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if (this.ctx.state!=="running") this.ctx.resume(); }catch(e){ this.ok=false; } },
   get(text){   // one download per sentence, kept for this visit
     if (!this.clips.has(text)){ const p=(async()=>{ const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),12000);
         try{ const r=await fetch(VOICE_URL+"?t="+encodeURIComponent(text),{signal:ctl.signal}); if (!r.ok) throw new Error("voice "+r.status); const ab=await r.arrayBuffer(); if (!this.ctx) this.unlock();
           const raw=await new Promise((res,rej)=>{ const t2=setTimeout(()=>rej(new Error("decode timeout")),6000); this.ctx.decodeAudioData(ab,b=>{ clearTimeout(t2); res(b); },e=>{ clearTimeout(t2); rej(e); }); });
-          let kid=null; try{ kid=kidBuffer(this.ctx, raw); }catch(e){} return {raw, kid}; } finally{ clearTimeout(to); } })();
+          return {raw, v:{}}; } finally{ clearTimeout(to); } })();
       p.catch(()=>this.clips.delete(text)); this.clips.set(text,p); }
     return this.clips.get(text); },
   stop(){ this.token++; if (this.src){ try{ this.src.onended=null; this.src.stop(); }catch(e){} this.src=null; } if (this.done){ const d=this.done; this.done=null; d(); } },
-  playBuffer(clip){ return new Promise(res=>{ const n=this.ctx.createBufferSource(); const useKid=this.kid && clip.kid; n.buffer=useKid?clip.kid:clip.raw; n.playbackRate.value=useKid?KID_RATE:1; n.connect(this.ctx.destination); this.src=n; this.done=res; n.onended=()=>{ if (this.src===n){ this.src=null; this.done=null; res(); } }; n.start(); }); }
+  playBuffer(clip){ return new Promise(res=>{ const n=this.ctx.createBufferSource(); let b=clip.raw, rate=1; try{ b=voiceBuffer(this.ctx, clip); rate=this.kid?KID_RATE:1; }catch(e){ b=clip.raw; rate=1; } n.buffer=b; n.playbackRate.value=rate; n.connect(this.ctx.destination); this.src=n; this.done=res; n.onended=()=>{ if (this.src===n){ this.src=null; this.done=null; res(); } }; n.start(); }); }
 };
 document.addEventListener("pointerdown",()=>cv.unlock(),{passive:true});
-function renderKid(){ const b=$("kidVoice"); b.textContent=cv.kid?"🧒 Kid voice: On":"🧑 Kid voice: Off"; b.setAttribute("aria-pressed",cv.kid); }
-$("kidVoice").onclick=()=>{ cv.kid=!cv.kid; store.set("pq.kidVoice",cv.kid); renderKid(); if (shadowOn && !shadowPaused){ const k=shadowK; cv.stop(); speakFrom(k); } else rb(cv.kid?"Kid voice is on. Tap 🐼 to hear it.":"Kid voice is off. Tap 🐼 to hear the grown-up voice."); };
-renderKid();
+function renderSpeed(){ const x=SPEEDS.find(v=>v[0]===cv.speed)||SPEEDS[0]; $("readSpeed").textContent=x[1]; }
+$("readSpeed").onclick=()=>{ const i=SPEEDS.findIndex(v=>v[0]===cv.speed); cv.speed=SPEEDS[(i+1)%SPEEDS.length][0]; store.set("pq.readSpeed",cv.speed); renderSpeed(); if (shadowOn && !shadowPaused){ const k=shadowK; cv.stop(); speakFrom(k); } else rb("Macha's reading speed: "+$("readSpeed").textContent+". Tap 🐼 to hear it."); };
+renderSpeed();
 function shadowSplit(){ const sents=[]; let cur=[];
   for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur); return sents; }
 function shadowClear(){ document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); }
@@ -1419,7 +1423,7 @@ function deviceSpeakFrom(k){
   const sents=shadowSents; if (!sents[k]) return; if (!("speechSynthesis" in window)){ shadowFinish(); return; }
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
   const v=jaVoice();
-  const us=[]; for (let j=k;j<sents.length;j++){ const sn=sents[j]; const u=new SpeechSynthesisUtterance(sayText(sn)); u.lang="ja-JP"; u.rate=0.95; u.pitch=MACHA_PITCH; if (v) u.voice=v;
+  const us=[]; for (let j=k;j<sents.length;j++){ const sn=sents[j]; const u=new SpeechSynthesisUtterance(sayText(sn)); u.lang="ja-JP"; u.rate=Math.max(0.5,0.95/cv.speed); u.pitch=MACHA_PITCH; if (v) u.voice=v;
     u.onstart=()=>{ if (!shadowPaused) shadowLight(j); };
     u.onend=()=>{ if (shadowPaused) return; if (j<sents.length-1) shadowLight(j+1); else shadowFinish(); };
     u.onerror=()=>{};
