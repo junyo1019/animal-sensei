@@ -1361,7 +1361,7 @@ $("qNo").onclick=()=>{ markCard(qCur,false); nextQ(); };
 // ---------- shadowing: Macha reads sentence by sentence
 let shadowK=0, shadowPaused=false, shadowOn=false, shadowSents=[];
 const NUM_KANJI=/^[一二三四五六七八九十百千何]/, SAY_KANA=new Set(["日本","入ろう","帰り","長","拾いました","拾い","町"]);   // words a voice may read another way (にっぽん, にゅうろう)
-function sayText(sn){ return sn.map(o=>{ if (!o.kanji) return o.s; return (o.s.length===1 || NUM_KANJI.test(o.s) || SAY_KANA.has(o.s) || (/^入/.test(o.s) && /^はい/.test(o.r))) ? o.r : o.s; }   // 入る is はいる here, but a voice may say いる).join("").replace(/\s+/g,""); }
+function sayText(sn){ return sn.map(o=>{ if (!o.kanji) return o.s; return (o.s.length===1 || NUM_KANJI.test(o.s) || SAY_KANA.has(o.s) || (/^入/.test(o.s) && /^はい/.test(o.r))) ? o.r : o.s; /* 入る is はいる here, but a voice may say いる */ }).join("").replace(/\s+/g,""); }
 // ---- Macha's story voice: natural neural speech from Animal Sensei's own voice service (MeloTTS on Cloudflare Workers AI; MIT license, no credit line needed).
 // Each sentence is fetched as audio and played with Web Audio. If the service can't be reached, the device's built-in voice reads instead.
 const VOICE_URL="https://animal-sensei-voice.junyo1019.workers.dev/";
