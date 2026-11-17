@@ -1253,6 +1253,7 @@ function loadPassage(id){
   if (day>=2) renderQuestions();
   if (day>=3){ $("wprompt").innerHTML=rubyHTML(rp.write.q); $("wfeedback").hidden=true; wbLoad(); }
   rb(day===1 ? "New story! Listen to me first, then you read it." : `Welcome back! Last time: ${fmtSess(sessions[sessions.length-1])}. Let's beat it.`);
+  try{ if (cv.ok && VOICE_URL && navigator.onLine!==false) shadowSplit().slice(0,3).forEach(sn=>cv.get(sayText(sn)).catch(()=>{})); }catch(e){}   // get the first sentences of Macha's voice ready
   autoRead();
   renderReport();
 }
@@ -1361,33 +1362,68 @@ $("qNo").onclick=()=>{ markCard(qCur,false); nextQ(); };
 let shadowK=0, shadowPaused=false, shadowOn=false, shadowSents=[];
 const NUM_KANJI=/^[一二三四五六七八九十百千何]/, SAY_KANA=new Set(["日本","入ろう","帰り","長"]);   // words a voice may read another way (にっぽん, にゅうろう)
 function sayText(sn){ return sn.map(o=>{ if (!o.kanji) return o.s; return (o.s.length===1 || NUM_KANJI.test(o.s) || SAY_KANA.has(o.s)) ? o.r : o.s; }).join("").replace(/\s+/g,""); }
+// ---- Macha's story voice: natural neural speech from Animal Sensei's own voice service (MeloTTS on Cloudflare Workers AI; MIT license, no credit line needed).
+// Each sentence is fetched as audio and played with Web Audio. If the service can't be reached, the device's built-in voice reads instead.
+const VOICE_URL="https://animal-sensei-voice.junyo1019.workers.dev/";
+const cv={ ctx:null, clips:new Map(), src:null, done:null, token:0, ok:!!(window.AudioContext||window.webkitAudioContext),
+  unlock(){ if (!this.ok) return; try{ if (!this.ctx) this.ctx=new (window.AudioContext||window.webkitAudioContext)(); if (this.ctx.state!=="running") this.ctx.resume(); }catch(e){ this.ok=false; } },
+  get(text){   // one download per sentence, kept for this visit
+    if (!this.clips.has(text)){ const p=(async()=>{ const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),12000);
+        try{ const r=await fetch(VOICE_URL+"?t="+encodeURIComponent(text),{signal:ctl.signal}); if (!r.ok) throw new Error("voice "+r.status); const ab=await r.arrayBuffer(); if (!this.ctx) this.unlock();
+          return await new Promise((res,rej)=>{ const t2=setTimeout(()=>rej(new Error("decode timeout")),6000); this.ctx.decodeAudioData(ab,b=>{ clearTimeout(t2); res(b); },e=>{ clearTimeout(t2); rej(e); }); }); } finally{ clearTimeout(to); } })();
+      p.catch(()=>this.clips.delete(text)); this.clips.set(text,p); }
+    return this.clips.get(text); },
+  stop(){ this.token++; if (this.src){ try{ this.src.onended=null; this.src.stop(); }catch(e){} this.src=null; } if (this.done){ const d=this.done; this.done=null; d(); } },
+  playBuffer(buf){ return new Promise(res=>{ const n=this.ctx.createBufferSource(); n.buffer=buf; n.connect(this.ctx.destination); this.src=n; this.done=res; n.onended=()=>{ if (this.src===n){ this.src=null; this.done=null; res(); } }; n.start(); }); }
+};
+document.addEventListener("pointerdown",()=>cv.unlock(),{passive:true});
+function shadowSplit(){ const sents=[]; let cur=[];
+  for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur); return sents; }
+function shadowClear(){ document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); }
+function shadowLight(j){ const sents=shadowSents; shadowClear(); if (!sents[j]) return; shadowK=j; sents[j].forEach(o=>o.el.classList.add("now")); keepVisible(sents[j][0].el); }
+function shadowFinish(){ shadowClear(); shadowOn=false; $("pauseRead").hidden=true; rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); }
 function speakFrom(k){
   const sents=shadowSents; if (!sents[k]) return;
+  if (cv.ok && VOICE_URL && navigator.onLine!==false) cloudSpeakFrom(k); else deviceSpeakFrom(k);
+}
+async function cloudSpeakFrom(k){
+  const sents=shadowSents; try{ speechSynthesis.cancel(); }catch(e){} cv.unlock(); cv.stop(); const my=cv.token; shadowLight(k);
+  for (let j=k;j<sents.length;j++){
+    for (let a=1;a<=2;a++) if (sents[j+a]) cv.get(sayText(sents[j+a])).catch(()=>{});   // fetch the next sentences while this one plays, so there is no gap
+    let buf=null; try{ buf=await cv.get(sayText(sents[j])); }catch(e){}
+    if (my!==cv.token || !shadowOn || shadowPaused) return;
+    if (buf && cv.ctx.state!=="running"){ try{ await cv.ctx.resume(); }catch(e){} }
+    if (!buf || cv.ctx.state!=="running"){ deviceSpeakFrom(j); return; }   // no connection or no sound allowed yet: the device voice takes over from here
+    shadowLight(j); await cv.playBuffer(buf);
+    if (my!==cv.token || !shadowOn || shadowPaused) return;
+  }
+  shadowFinish();
+}
+function deviceSpeakFrom(k){
+  const sents=shadowSents; if (!sents[k]) return; if (!("speechSynthesis" in window)){ shadowFinish(); return; }
   loadVoices(); try{ speechSynthesis.cancel(); }catch(e){}
-  const v=jaVoice(); const clearNow=()=>document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now"));
-  const light=(j)=>{ clearNow(); if (!sents[j]) return; shadowK=j; sents[j].forEach(o=>o.el.classList.add("now")); keepVisible(sents[j][0].el); };
+  const v=jaVoice();
   const us=[]; for (let j=k;j<sents.length;j++){ const sn=sents[j]; const u=new SpeechSynthesisUtterance(sayText(sn)); u.lang="ja-JP"; u.rate=0.95; u.pitch=MACHA_PITCH; if (v) u.voice=v;
-    u.onstart=()=>{ if (!shadowPaused) light(j); };
-    u.onend=()=>{ if (shadowPaused) return; if (j<sents.length-1) light(j+1); else { clearNow(); shadowOn=false; $("pauseRead").hidden=true; rb("Your turn! Tap 🎤 Start reading and read it all by yourself."); } };
+    u.onstart=()=>{ if (!shadowPaused) shadowLight(j); };
+    u.onend=()=>{ if (shadowPaused) return; if (j<sents.length-1) shadowLight(j+1); else shadowFinish(); };
     u.onerror=()=>{};
     us.push(u); }
-  window.__shadowUs=us; light(k);
+  window.__shadowUs=us; shadowLight(k);
   setTimeout(()=>{ try{ speechSynthesis.resume(); }catch(e){} us.forEach(u=>speechSynthesis.speak(u)); },80);
 }
 $("shadow").onclick=()=>{
-  if (!("speechSynthesis" in window)){ rb("No voice on this device. Read it together with a parent."); return; }
+  if (!("speechSynthesis" in window) && !cv.ok){ rb("No voice on this device. Read it together with a parent."); return; }
   // Macha reads the whole story, sentence after sentence with no gap; the sentence being read is highlighted; ⏸ pauses, ▶ continues from that sentence
-  const sents=[]; let cur=[];
-  for (let i=0;i<rTok.length;i++){ const o=rTok[i]; cur.push(o); const nx=rTok[i+1]; if (/[。！？]$/.test(o.s.trim()) && !(nx && /^」/.test(nx.s))){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur);
+  cv.unlock(); const sents=shadowSplit();
   shadowSents=sents; shadowPaused=false; shadowOn=true; $("pauseRead").hidden=false; $("pauseRead").textContent="⏸ Pause";
   rb("Listen and follow along. Tap ⏸ to pause. Then it's your turn."); speakFrom(0);
 };
 $("pauseRead").onclick=()=>{
   if (!shadowOn) return;
-  if (!shadowPaused){ shadowPaused=true; try{ speechSynthesis.cancel(); }catch(e){} $("pauseRead").textContent="▶ Continue"; rb("Paused. Tap ▶ to continue from this sentence."); }
+  if (!shadowPaused){ shadowPaused=true; cv.stop(); try{ speechSynthesis.cancel(); }catch(e){} $("pauseRead").textContent="▶ Continue"; rb("Paused. Tap ▶ to continue from this sentence."); }
   else { shadowPaused=false; $("pauseRead").textContent="⏸ Pause"; speakFrom(shadowK); }
 };
-function stopShadow(){ if (shadowOn){ shadowOn=false; shadowPaused=false; try{ speechSynthesis.cancel(); }catch(e){} $("pauseRead").hidden=true; document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); } }
+function stopShadow(){ if (shadowOn){ shadowOn=false; shadowPaused=false; cv.stop(); try{ speechSynthesis.cancel(); }catch(e){} $("pauseRead").hidden=true; document.querySelectorAll(".passage .w.now").forEach(e=>e.classList.remove("now")); } }
 
 // ---------- read-aloud check (timer + on-device speech recognition when allowed)
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
