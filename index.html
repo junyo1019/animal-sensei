@@ -153,6 +153,30 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
 .tabs{display:flex;gap:6px;background:var(--paper);border-radius:999px;padding:4px;width:max-content;margin:0 auto 12px}
 .tabs button{padding:8px 18px;border-radius:999px;font-family:var(--display);font-size:16px;font-weight:600;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+/* cloud sync box */
+.syncbox{background:var(--paper);border-radius:18px;padding:14px 16px;margin:0 auto 12px;max-width:620px;font-size:14px;font-weight:600}
+.syncbox .code{font-family:ui-monospace,Menlo,monospace;font-size:20px;letter-spacing:1px;background:var(--bg);padding:6px 12px;border-radius:10px;display:inline-block;user-select:all;-webkit-user-select:all}
+.syncbox input{font:inherit;font-family:ui-monospace,Menlo,monospace;padding:9px 12px;border-radius:10px;border:2px solid var(--line);background:var(--paper);color:var(--ink);width:240px;text-transform:uppercase}
+.syncbox .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.syncbox .err{color:#B3261E}
+/* story cards: done / in progress / new */
+.sprog{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-weight:700;font-size:14px;flex-wrap:wrap}
+.sprog .bar{flex:1;min-width:120px;height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.sprog .bar i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.scards{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+.scard{flex:0 0 190px;text-align:left;background:var(--paper);color:var(--ink);border:3px solid var(--line);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-weight:700}
+.scard .t{font-size:16px;line-height:1.3}
+.scard .st{display:flex;gap:6px;font-size:18px}
+.scard .st span{opacity:.25;filter:grayscale(1)}
+.scard .st span.y{opacity:1;filter:none}
+.scard .bd{font-size:12px;padding:3px 9px;border-radius:999px;align-self:flex-start;background:var(--line);color:var(--ink)}
+.scard[data-st="part"]{border-color:var(--sun)} .scard[data-st="part"] .bd{background:var(--sun);color:#4A3300}
+.scard[data-st="done"]{border-color:var(--ok)} .scard[data-st="done"] .bd{background:var(--ok);color:#fff}
+.scard[aria-current="true"]{box-shadow:0 0 0 3px var(--sea)}
+/* tap a kanji in a question to see how to read it */
+.qk{border-bottom:2px dotted var(--sea);cursor:pointer;position:relative;display:inline-block;line-height:1.2}
+.qk.on::after{content:attr(data-r);position:absolute;left:50%;bottom:100%;transform:translateX(-50%);background:var(--sun);color:#4A3300;font-size:.72em;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;z-index:6;pointer-events:none}
+.qhint{font-size:13px;color:var(--muted);margin:0 0 8px}
 .rtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .pick{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .pick label{font-size:13px;color:var(--muted)}
@@ -252,12 +276,20 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   <label class="grade"><span>Japanese</span><select id="gradeSel" aria-label="Japanese grade"><option value="1">1st Grade</option><option value="2">2nd Grade</option><option value="3">3rd Grade</option><option value="4">4th Grade</option><option value="5">5th Grade</option><option value="6">6th Grade</option></select></label>
   <div class="stamp half" id="stamp" title="Today's progress">📅 Read · Write · Katakana</div>
   <div class="stars">⭐ <b id="starCount">0</b> stars</div>
+  <button class="chip" id="syncChip" type="button" title="Save and share progress across devices">☁️ Sync</button>
   <button class="chip" id="openSafari" type="button">🧭 Open in Safari</button>
+</div>
+<div class="syncbox" id="syncBox" hidden>
+  <p id="syncStatus">☁️ Getting ready…</p>
+  <p>Family code: <span class="code" id="syncCode">…</span> <button class="chip" id="syncCopy" type="button">Copy</button></p>
+  <p>To see the same records on another iPad or computer: open Animal Sensei there, tap ☁️, and type this code below.</p>
+  <div class="row"><input id="syncInput" placeholder="MACHA-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Family code"><button class="chip go" id="syncJoin" type="button">Use this code</button></div>
+  <p class="err" id="syncErr" hidden></p>
 </div>
 <div class="safari" id="safariBox" hidden>
   <p>Tap the link to open this app in Safari, then tap Share → <b>Add to Home Screen</b>. Mic and voice work best there.</p>
   <div class="row">
-    <a class="chip go" id="appLink" href="https://claude.ai/artifact/VZC2dzaNVshSMRW4xoxWKE" target="_blank" rel="noopener">Open Animal Sensei ↗</a>
+    <a class="chip go" id="appLink" href="https://junyo1019.github.io/animal-sensei/" target="_blank" rel="noopener">Open Animal Sensei ↗</a>
     <button class="chip" id="copyLink" type="button">Copy link</button>
   </div>
   <input id="linkText" type="text" readonly value="https://claude.ai/artifact/VZC2dzaNVshSMRW4xoxWKE" aria-label="App link">
@@ -328,12 +360,15 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 <div id="readTab">
   <div class="rtop">
     <div class="pick">
-      <label for="passageSel">Story</label>
-      <select id="passageSel"></select>
+      <label for="passageSel" hidden>Story</label>
+      <select id="passageSel" hidden></select>
+      <button id="nextStory" type="button" class="chip go">▶ Next story</button>
       <button id="addPassage" type="button" class="chip">＋ Add a story</button>
     </div>
     <div class="plan" id="plan"></div>
   </div>
+  <div class="sprog" id="storyProg"></div>
+  <div class="scards" id="storyCards" aria-label="Stories"></div>
 
   <section class="quiz" id="quiz" hidden>
     <h2>Yesterday's words · say it out loud</h2>
@@ -382,6 +417,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
 
   <section class="qs" id="qs" hidden>
     <h2>Questions</h2>
+    <p class="qhint">Don't know a kanji? Tap a dotted word to see and hear how to read it.</p>
     <div id="qlist"></div>
   </section>
 
@@ -445,6 +481,67 @@ const ROWS = []; for (let i=0;i<KANA.length;i+=5) ROWS.push(KANA.slice(i,i+5));
 // ---- state
 let cur = 0, guideOn = true, strokes = [], usedPen = false, live = null, step = 1;
 const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} } };
+// ---- cloud sync: every record is saved on this device first, then copied to the family's document in Firebase.
+// Another iPad or computer that enters the same family code gets the same records. Newest change wins, key by key.
+const FB_DOC="https://firestore.googleapis.com/v1/projects/animal-sensei-12a0a/databases/(default)/documents/families/", FB_KEY="AIzaSyD1VStEGcZXJotLtfhIl7pdI4orfBrYpuI";
+const CODE_RE=/^MACHA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+const lsGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, lsSet=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+const isSynced=k=>/^pq\./.test(k) && !/^pq\.(tab|who|clock|clockSound)$/.test(k) && !/^pq\.r\.\d+\.auto\./.test(k);   // which screen/tab/player this device shows stays on the device
+const encKey=k=>"k_"+k.replace(/[^A-Za-z0-9]/g,c=>"_"+c.charCodeAt(0).toString(16)+"_");
+const sync={ code:lsGet("pqsync.code",null), meta:lsGet("pqsync.meta",{}), dirty:lsGet("pqsync.dirty",{}), state:"idle", last:lsGet("pqsync.last",0), busy:false, timer:null, first:true,
+  save(){ lsSet("pqsync.meta",this.meta); lsSet("pqsync.dirty",this.dirty); },
+  newCode(){ const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789", r=new Uint32Array(12); crypto.getRandomValues(r); let c="MACHA"; for (let i=0;i<12;i++){ if (i%4===0) c+="-"; c+=A[r[i]%A.length]; } return c; },
+  localKeys(){ const ks=[]; try{ for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if (isSynced(k)) ks.push(k); } }catch(e){} return ks; },
+  touch(k){ this.meta[k]=Date.now(); this.dirty[k]=1; this.save(); this.setState("saving"); clearTimeout(this.timer); this.timer=setTimeout(()=>this.push(),1500); },
+  setState(st){ this.state=st; try{ renderSync(); }catch(e){} },
+  async push(){
+    if (!this.code || this.busy) return; const all=Object.keys(this.dirty); if (!all.length){ this.setState("ok"); return; }
+    if (navigator.onLine===false){ this.setState("offline"); return; }
+    this.busy=true; const keys=all.slice(0,60), sent={}, fields={}; let mask="";
+    for (const k of keys){ let raw=null; try{ raw=localStorage.getItem(k); }catch(e){} if (raw==null){ delete this.dirty[k]; continue; }
+      sent[k]=this.meta[k]||1; fields[encKey(k)]={mapValue:{fields:{k:{stringValue:k},v:{stringValue:raw},t:{integerValue:String(sent[k])}}}}; mask+="&updateMask.fieldPaths="+encodeURIComponent("items."+encKey(k)); }
+    try{
+      if (Object.keys(sent).length){
+        const r=await fetch(FB_DOC+this.code+"?key="+FB_KEY+"&updateMask.fieldPaths=updated"+mask,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:{updated:{integerValue:String(Date.now())},items:{mapValue:{fields}}}})});
+        if (!r.ok) throw new Error("save "+r.status);
+        for (const k in sent) if ((this.meta[k]||1)===sent[k]) delete this.dirty[k];
+      }
+      this.last=Date.now(); lsSet("pqsync.last",this.last); this.save(); this.busy=false;
+      if (Object.keys(this.dirty).length) return this.push(); this.setState("ok");
+    }catch(e){ this.busy=false; this.save(); this.setState("offline"); clearTimeout(this.timer); this.timer=setTimeout(()=>this.push(),30000); }
+  },
+  // force=true when joining another family code: what is already in the cloud wins
+  async pull(force){
+    if (!this.code) return "nocode"; if (navigator.onLine===false){ this.setState("offline"); return "offline"; }
+    try{
+      const r=await fetch(FB_DOC+this.code+"?key="+FB_KEY);
+      if (r.status===404){ if (force) return "missing"; for (const k of this.localKeys()){ if (!this.meta[k]) this.meta[k]=Date.now(); this.dirty[k]=1; } this.save(); this.push(); return "new"; }
+      if (!r.ok) throw new Error("load "+r.status);
+      const items=((await r.json()).fields||{}).items; const f=(items&&items.mapValue&&items.mapValue.fields)||{}; const remote={}; let changed=false;
+      for (const id in f){ const m=(f[id].mapValue||{}).fields||{}; const k=m.k&&m.k.stringValue, v=m.v&&m.v.stringValue, t=+((m.t&&m.t.integerValue)||0); if (!k || v==null || !isSynced(k)) continue; remote[k]=1;
+        if (force || t>(this.meta[k]||0)){ let cur=null; try{ cur=localStorage.getItem(k); }catch(e){} if (cur!==v){ try{ localStorage.setItem(k,v); changed=true; }catch(e){} } this.meta[k]=t; delete this.dirty[k]; } }
+      for (const k of this.localKeys()) if (!remote[k]){ if (!this.meta[k]) this.meta[k]=1; this.dirty[k]=1; }
+      this.save(); const first=this.first; this.first=false;
+      if (changed){ try{ afterPull(first||force); }catch(e){} }
+      this.last=Date.now(); lsSet("pqsync.last",this.last); await this.push(); if (this.state!=="offline") this.setState("ok"); return "ok";
+    }catch(e){ this.setState("offline"); return "offline"; }
+  },
+  async join(code){ const old={code:this.code,meta:this.meta,dirty:this.dirty}; this.code=code; this.meta={}; this.dirty={}; const res=await this.pull(true);
+    if (res!=="ok"){ this.code=old.code; this.meta=old.meta; this.dirty=old.dirty; return res; } lsSet("pqsync.code",code); this.save(); return "ok"; },
+  start(){ if (!this.code || !CODE_RE.test(this.code)){ this.code=this.newCode(); lsSet("pqsync.code",this.code); }
+    this.pull(false);
+    document.addEventListener("visibilitychange",()=>{ if (document.visibilityState==="visible") this.pull(false); else this.push(); });
+    window.addEventListener("online",()=>this.pull(false)); window.addEventListener("pagehide",()=>this.push());
+    setInterval(()=>{ if (document.visibilityState==="visible") this.pull(false); }, 5*60*1000); }
+};
+{ const rawSet=store.set; store.set=(k,v)=>{ rawSet(k,v); if (isSynced(k)) sync.touch(k); }; }
+function renderSync(){
+  const chip=document.getElementById("syncChip"); if (!chip) return;
+  const tm=sync.last?new Date(sync.last).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"";
+  const label={saving:"☁️ Saving…", ok:"☁️ Saved"+(tm?" "+tm:""), offline:"☁️ Offline", idle:"☁️ Sync"}[sync.state]||"☁️ Sync"; chip.textContent=label;
+  const st=document.getElementById("syncStatus"); if (st) st.textContent={saving:"☁️ Saving your records…", ok:"☁️ All records are saved"+(tm?" (last saved "+tm+")":"")+".", offline:"☁️ No internet right now. Records are kept on this device and will be saved when it comes back.", idle:"☁️ Getting ready…"}[sync.state];
+  const c=document.getElementById("syncCode"); if (c) c.textContent=sync.code||"…";
+}
 let profiles = store.get("pq.profiles", [{name:"Player 1"},{name:"Player 2"}]);
 let who = store.get("pq.who", 0);
 function pdata(){ return store.get("pq.p"+who, {done:{}, stars:0}); }
@@ -731,6 +828,11 @@ $("check").onclick=()=>{
 
 // ---- navigation
 function esc(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+// readings for the kanji in every question, answer choice and writing prompt: {kanji|reading}
+const RUBY={"わたしは、だれと 海に 行きましたか。":"わたしは、だれと {海|うみ}に {行|い}きましたか。","お母さん":"{お母|おかあ}さん","お父さん":"{お父|おとう}さん","お兄さん":"お{兄|にい}さん","空に うかんで いたのは 何ですか。":"{空|そら}に うかんで いたのは {何|なん}ですか。","白い 雲":"{白|しろ}い {雲|くも}","青い 魚":"{青|あお}い {魚|さかな}","大きな 声":"{大|おお}きな {声|こえ}","「見て！」と 言ったとき、お父さんは どう しましたか。":"「{見|み}て！」と {言|い}ったとき、{お父|おとう}さんは どう しましたか。","泣いた":"{泣|な}いた","手を たたいて わらった":"{手|て}を たたいて わらった","帰った":"{帰|かえ}った","あなたなら、お母さんに 何を 話しますか。一つ 書きましょう。":"あなたなら、{お母|おかあ}さんに {何|なに}を {話|はな}しますか。{一|ひと}つ {書|か}きましょう。","ぼくと 兄は、なぜ 駅へ 行きましたか。":"ぼくと {兄|あに}は、なぜ {駅|えき}へ {行|い}きましたか。","電車に 乗るため":"{電車|でんしゃ}に {乗|の}るため","荷物を 買うため":"{荷物|にもつ}を {買|か}うため","電車を 待つ あいだ、兄は 何を して いましたか。":"{電車|でんしゃ}を {待|ま}つ あいだ、{兄|あに}は {何|なに}を して いましたか。","何度も 時計を 見て いた":"{何|なん}{度|ど}も {時計|とけい}を {見|み}て いた","自動はんばいきで 買って いた":"{自動|じどう}はんばいきで {買|か}って いた","笑って 手を ふって いた":"{笑|わら}って {手|て}を ふって いた","おばあちゃんが 来た いちばんの 理由は 何ですか。":"おばあちゃんが {来|き}た いちばんの {理由|りゆう}は {何|なん}ですか。","荷物を とどけるため":"{荷物|にもつ}を とどけるため","重い ものを 持つため":"{重|おも}い ものを {持|も}つため","元気な 顔を 見るため":"{元気|げんき}な {顔|かお}を {見|み}るため","おばあちゃんは「元気な顔を見に来たのよ」と言いました。おばあちゃんは、どんな気持ちだったと思いますか。":"おばあちゃんは「{元気|げんき}な{顔|かお}を{見|み}に{来|き}たのよ」と{言|い}いました。おばあちゃんは、どんな{気持|きも}ちだったと{思|おも}いますか。","犬":"{犬|いぬ}","先生":"{先生|せんせい}","木の 下に さいて いたのは 何ですか。":"{木|き}の {下|した}に さいて いたのは {何|なん}ですか。","花":"{花|はな}","虫":"{虫|むし}","山":"{山|やま}","犬は 花を 見て どう しましたか。":"{犬|いぬ}は {花|はな}を {見|み}て どう しましたか。","水に 入った":"{水|みず}に {入|はい}った","あなたは きょう 何を しましたか。一つ 書きましょう。":"あなたは きょう {何|なに}を しましたか。{一|ひと}つ {書|か}きましょう。","わたしは どこへ 行きましたか。":"わたしは どこへ {行|い}きましたか。","図書館":"{図書館|としょかん}","教室":"{教室|きょうしつ}","海":"{海|うみ}","わたしは なぜ そこへ 行きましたか。":"わたしは なぜ そこへ {行|い}きましたか。","読む 本を 決めるため":"{読|よ}む {本|ほん}を {決|き}めるため","先生に 会うため":"{先生|せんせい}に {会|あ}うため","本が すぐに とれなかった わけは 何ですか。":"{本|ほん}が すぐに とれなかった わけは {何|なん}ですか。","せが ひくくて 手が とどかなかった":"せが ひくくて {手|て}が とどかなかった","本が なかった":"{本|ほん}が なかった","先生が 来なかった":"{先生|せんせい}が {来|こ}なかった","図書館で、あなたなら どんな 本を さがしますか。":"{図書館|としょかん}で、あなたなら どんな {本|ほん}を さがしますか。","強い 雨で、川は どうなって いましたか。":"{強|つよ}い {雨|あめ}で、{川|かわ}は どうなって いましたか。","水が 増えて 速く 流れて いた":"{水|みず}が {増|ふ}えて {速|はや}く {流|なが}れて いた","わたしは 花子さんに 何と 言いましたか。":"わたしは {花子|はなこ}さんに {何|なん}と {言|い}いましたか。","あぶないから 遠回りを しよう":"あぶないから {遠回|とおまわ}りを しよう","いっしょに 橋を わたろう":"いっしょに {橋|はし}を わたろう","先に 行って":"{先|さき}に {行|い}って","先生は 二人の ことを どう 言いましたか。":"{先生|せんせい}は {二人|ふたり}の ことを どう {言|い}いましたか。","安全を 考えた 正しい 判断":"{安全|あんぜん}を {考|かんが}えた {正|ただ}しい {判断|はんだん}","もっと 早く 来なさい":"もっと {早|はや}く {来|き}なさい","雨の 日に あぶないと 思った ことは ありますか。そのとき どう しましたか。":"{雨|あめ}の {日|ひ}に あぶないと {思|おも}った ことは ありますか。そのとき どう しましたか。","わたしは 何に ついて 発表しましたか。":"わたしは {何|なに}に ついて {発表|はっぴょう}しましたか。","地球の 未来":"{地球|ちきゅう}の {未来|みらい}","学校の きまり":"{学校|がっこう}の きまり","町の 歴史":"{町|まち}の {歴史|れきし}","わたしは ごみを へらす ために 何が 大切だと 言いましたか。":"わたしは ごみを へらす ために {何|なに}が {大切|たいせつ}だと {言|い}いましたか。","全員が 小さな 努力を 続ける こと":"{全員|ぜんいん}が {小|ちい}さな {努力|どりょく}を {続|つづ}ける こと","新しい きかいを 作る こと":"{新|あたら}しい きかいを {作|つく}る こと","ごみ箱を ふやす こと":"ごみ{箱|ばこ}を ふやす こと","太郎さんは どんな 例を 出しましたか。":"{太郎|たろう}さんは どんな {例|れい}を {出|だ}しましたか。","店で ふくろを 使わない こと":"{店|みせ}で ふくろを {使|つか}わない こと","電車に 乗る こと":"{電車|でんしゃ}に {乗|の}る こと","早く ねる こと":"{早|はや}く ねる こと","あなたが 地球の 未来の ために できる ことは 何ですか。":"あなたが {地球|ちきゅう}の {未来|みらい}の ために できる ことは {何|なん}ですか。","きょうの 日直は だれですか。":"きょうの {日直|にっちょく}は だれですか。","友だち":"{友|とも}だち","わたしは どんな 声で 言いましたか。":"わたしは どんな {声|こえ}で {言|い}いましたか。","小さな 声":"{小|ちい}さな {声|こえ}","元気な 声":"{元気|げんき}な {声|こえ}","ないた 声":"ないた {声|こえ}","先生は 何と 言って くれましたか。":"{先生|せんせい}は {何|なん}と {言|い}って くれましたか。","上手に できたね":"{上手|じょうず}に できたね","もう一回":"もう{一回|いっかい}","早く して":"{早|はや}く して","あなたが 日直に なったら、みんなに 何を 言いますか。":"あなたが {日直|にっちょく}に なったら、みんなに {何|なに}を {言|い}いますか。","きゅう食は 何時から ですか。":"きゅう{食|しょく}は {何|なん}{時|じ}から ですか。","十時":"{十|じゅう}{時|じ}","十二時":"{十|じゅう}{二|に}{時|じ}","三時":"{三時|さんじ}","当番の 人は 何を しますか。":"{当番|とうばん}の {人|ひと}は {何|なに}を しますか。","教室を そうじする":"{教室|きょうしつ}を そうじする","食べなかった":"{食|た}べなかった","友だちに あげた":"{友|とも}だちに あげた","小さく 切って 少しずつ 食べた":"{小|ちい}さく {切|き}って {少|すこ}しずつ {食|た}べた","あなたの 好きな 食べ物は 何ですか。なぜ 好きですか。":"あなたの {好|す}きな {食べ物|たべもの}は {何|なん}ですか。なぜ {好|す}きですか。","ぼくは 何を 学校に わすれましたか。":"ぼくは {何|なに}を {学校|がっこう}に わすれましたか。","たくやくんは 何と 言いましたか。":"たくやくんは {何|なん}と {言|い}いましたか。","先に 帰るよ":"{先|さき}に {帰|かえ}るよ","一つの かさに 入ろう":"{一|ひと}つの かさに {入|はい}ろう","走って 帰ろう":"{走|はし}って {帰|かえ}ろう","家に 着くと、母は 何を して くれましたか。":"{家|いえ}に {着|つ}くと、{母|はは}は {何|なに}を して くれましたか。","ごはんを 作った":"ごはんを {作|つく}った","タオルを 出した":"タオルを {出|だ}した","かさを 買った":"かさを {買|か}った","あなたが 友だちに 「ありがとう」と 言いたい ことは 何ですか。":"あなたが {友|とも}だちに 「ありがとう」と {言|い}いたい ことは {何|なん}ですか。","手紙は だれから 来ましたか。":"{手紙|てがみ}は だれから {来|き}ましたか。","おばあちゃんは 春に 何を しようと 書いて いましたか。":"おばあちゃんは {春|はる}に {何|なに}を しようと {書|か}いて いましたか。","さくらを 見に 行く":"さくらを {見|み}に {行|い}く","海で およぐ":"{海|うみ}で およぐ","日本語を 教える":"{日本語|にほんご}を {教|おし}える","わたしは これから 何を したいですか。":"わたしは これから {何|なに}を したいですか。","電話を する":"{電話|でんわ}を する","日本語で 返事を 書く":"{日本語|にほんご}で {返事|へんじ}を {書|か}く","日本に 住む":"{日本|にほん}に {住|す}む","おばあちゃんに 手紙を 書くなら、何を つたえたいですか。一行 書きましょう。":"おばあちゃんに {手紙|てがみ}を {書|か}くなら、{何|なに}を つたえたいですか。{一行|いちぎょう} {書|か}きましょう。","公園の 葉は 何色でしたか。":"{公園|こうえん}の {葉|は}は {何色|なにいろ}でしたか。","赤や 黄色":"{赤|あか}や {黄色|きいろ}","白や 青":"{白|しろ}や {青|あお}","妹は 葉を 見て 何と 言いましたか。":"{妹|いもうと}は {葉|は}を {見|み}て {何|なん}と {言|い}いましたか。","鳥みたい":"{鳥|とり}みたい","家に 帰って 何を 作りましたか。":"{家|いえ}に {帰|かえ}って {何|なに}を {作|つく}りましたか。","絵":"{絵|え}","秋に なると、あなたは 何を したいですか。":"{秋|あき}に なると、あなたは {何|なに}を したいですか。","図書室に 行くのは 何曜日ですか。":"{図書|としょ}{室|しつ}に {行|い}くのは {何曜日|なんようび}ですか。","月曜日":"{月曜日|げつようび}","金曜日":"{金曜日|きんようび}","日曜日":"{日曜日|にちようび}","わたしは どんな 本を えらびましたか。":"わたしは どんな {本|ほん}を えらびましたか。","動物の 本":"{動物|どうぶつ}の {本|ほん}","車の 本":"{車|くるま}の {本|ほん}","うたの 本":"うたの {本|ほん}","本は どのくらい 借りられますか。":"{本|ほん}は どのくらい {借|か}りられますか。","一日":"{一日|いちにち}","二週間":"{二|に}{週間|しゅうかん}","一年":"{一年|いちねん}","あなたは 図書室で どんな 本を 借りたいですか。":"あなたは {図書|としょ}{室|しつ}で どんな {本|ほん}を {借|か}りたいですか。","朝、外は どう なって いましたか。":"{朝|あさ}、{外|そと}は どう なって いましたか。","雨が ふって いた":"{雨|あめ}が ふって いた","雪が つもって いた":"{雪|ゆき}が つもって いた","風が 強かった":"{風|かぜ}が {強|つよ}かった","雪だるまの 目は 何で 作りましたか。":"{雪|ゆき}だるまの {目|め}は {何|なに}で {作|つく}りましたか。","石":"{石|いし}","木":"{木|き}","雪":"{雪|ゆき}","姉は 雪だるまに 何を して くれましたか。":"{姉|あね}は {雪|ゆき}だるまに {何|なに}を して くれましたか。","名前を つけた":"{名前|なまえ}を つけた","雪が つもったら、あなたは 何を したいですか。":"{雪|ゆき}が つもったら、あなたは {何|なに}を したいですか。","ぼくは どこから 来ましたか。":"ぼくは どこから {来|き}ましたか。","日本の 大阪":"{日本|にほん}の {大阪|おおさか}","ぼくは 分からない とき、どう して ほしいと 言いましたか。":"ぼくは {分|わ}からない とき、どう して ほしいと {言|い}いましたか。","教えて ほしい":"{教|おし}えて ほしい","英語で 話して ほしい":"{英語|えいご}で {話|はな}して ほしい","前の 席の 男の子は 何と 言いましたか。":"{前|まえ}の {席|せき}の {男の子|おとこのこ}は {何|なん}と {言|い}いましたか。","休み時間に 話そう":"{休|やす}み{時間|じかん}に {話|はな}そう","いっしょに 帰ろう":"いっしょに {帰|かえ}ろう","海に 行こう":"{海|うみ}に {行|い}こう","あなたなら、新しい クラスで 自分の ことを どう しょうかい しますか。三文で 書きましょう。":"あなたなら、{新|あたら}しい クラスで {自分|じぶん}の ことを どう しょうかい しますか。{三文|さんぶん}で {書|か}きましょう。","連絡帳には 何を 書きますか。":"{連絡|れんらく}{帳|ちょう}には {何|なに}を {書|か}きますか。","次の 日の 時間割と 持ち物":"{次|つぎ}の {日|ひ}の {時間割|じかんわり}と {持ち物|もちもの}","日記":"{日記|にっき}","テストの 点":"テストの {点|てん}","美月さんは どんな 方法を 教えて くれましたか。":"{美月|みづき}さんは どんな {方法|ほうほう}を {教|おし}えて くれましたか。","先に ひらがなで 書く":"{先|さき}に ひらがなで {書|か}く","写真を とる":"{写真|しゃしん}を とる","先生に たのむ":"{先生|せんせい}に たのむ","家で 母は 何を して くれましたか。":"{家|いえ}で {母|はは}は {何|なに}を して くれましたか。","持ち物を 買った":"{持ち物|もちもの}を {買|か}った","赤ペンで 漢字を 直した":"{赤|あか}ペンで {漢字|かんじ}を {直|なお}した","連絡帳を 書いた":"{連絡|れんらく}{帳|ちょう}を {書|か}いた","学校で 分からない ことが あった とき、あなたは だれに どう 聞きますか。":"{学校|がっこう}で {分|わ}からない ことが あった とき、あなたは だれに どう {聞|き}きますか。","ぼくは 何の 選手に 選ばれましたか。":"ぼくは {何|なん}の {選手|せんしゅ}に {選|えら}ばれましたか。","つな引き":"つな{引|ひ}き","玉入れ":"{玉|たま}{入|い}れ","バトンを 受け取った とき、白組は どこに いましたか。":"バトンを {受け取|うけと}った とき、{白|しろ}{組|ぐみ}は どこに いましたか。","五メートル 後ろ":"{五|ご}メートル {後|うし}ろ","五メートル 先":"{五|ご}メートル {先|さき}","同じ 場所":"{同|おな}じ {場所|ばしょ}","ぼくは 練習で 落とした バトンを どう 思って いますか。":"ぼくは {練習|れんしゅう}で {落|お}とした バトンを どう {思|おも}って いますか。","その分 強く なれた":"その{分|ぶん} {強|つよ}く なれた","あなたが 何度も 失敗して、それでも がんばった ことは 何ですか。":"あなたが {何|なん}{度|ど}も {失敗|しっぱい}して、それでも がんばった ことは {何|なん}ですか。","おじいちゃんは 朝 何時に 畑へ 出かけますか。":"おじいちゃんは {朝|あさ} {何|なん}{時|じ}に {畑|はたけ}へ {出|で}かけますか。","五時":"{五|ご}{時|じ}","七時":"{七時|しちじ}","九時":"{九時|くじ}","葉の 色を 見ると 何が 分かりますか。":"{葉|は}の {色|いろ}を {見|み}ると {何|なに}が {分|わ}かりますか。","野菜の ねだん":"{野菜|やさい}の ねだん","元気か どうか":"{元気|げんき}か どうか","雨が ふるか":"{雨|あめ}が ふるか","トマトを 落としたから":"トマトを {落|お}としたから","野菜は 店で 買う ものだと 思って いたから":"{野菜|やさい}は {店|みせ}で {買|か}う ものだと {思|おも}って いたから","長ぐつを わすれたから":"{長|なが}ぐつを わすれたから","あなたが 「自分で やって みて 分かった こと」は 何ですか。":"あなたが 「{自分|じぶん}で やって みて {分|わ}かった こと」は {何|なん}ですか。","図書委員の 仕事は 何ですか。":"{図書|としょ}{委員|いいん}の {仕事|しごと}は {何|なん}ですか。","本の 貸し出しと たなに 戻す こと":"{本|ほん}の {貸し出|かしだ}しと たなに {戻|もど}す こと","本を 読む こと":"{本|ほん}を {読|よ}む こと","本を 買う こと":"{本|ほん}を {買|か}う こと","健太さんは 何を 教えて くれましたか。":"{健太|けんた}さんは {何|なに}を {教|おし}えて くれましたか。","番号の 最初の 数字が たなの 列":"{番号|ばんごう}の {最初|さいしょ}の {数字|すうじ}が たなの {列|れつ}","本の 読み方":"{本|ほん}の {読み方|よみかた}","昼休みの 時間":"{昼休|ひるやす}みの {時間|じかん}","一年生の 子は 何の 本を さがして いましたか。":"{一年生|いちねんせい}の {子|こ}は {何|なん}の {本|ほん}を さがして いましたか。","恐竜の 本":"{恐竜|きょうりゅう}の {本|ほん}","海の 本":"{海|うみ}の {本|ほん}","あなたは 学校で どんな 係や 委員を やって みたいですか。なぜですか。":"あなたは {学校|がっこう}で どんな {係|かかり}や {委員|いいん}を やって みたいですか。なぜですか。","夕方、父と 何を しましたか。":"{夕方|ゆうがた}、{父|ちち}と {何|なに}を しましたか。","植木ばちを 家に 運んだ":"{植木|うえき}ばちを {家|いえ}に {運|はこ}んだ","買い物に 行った":"{買い物|かいもの}に {行|い}った","テレビを 見た":"テレビを {見|み}た","電気が 消えた とき、わたしは 何を しましたか。":"{電気|でんき}が {消|き}えた とき、わたしは {何|なに}を しましたか。","懐中電灯を つけて 弟の 手を にぎった":"{懐中|かいちゅう}{電灯|でんとう}を つけて {弟|おとうと}の {手|て}を にぎった","外に 出た":"{外|そと}に {出|で}た","弟は どう して ねむりましたか。":"{弟|おとうと}は どう して ねむりましたか。","父の 話を 聞きながら":"{父|ちち}の {話|はなし}を {聞|き}きながら","母に だっこされて":"{母|はは}に だっこされて","風が やんでから":"{風|かぜ}が やんでから","こわい ことが あった とき、あなたを 安心させて くれる ものは 何ですか。":"こわい ことが あった とき、あなたを {安心|あんしん}させて くれる ものは {何|なん}ですか。","ぼくは 日本語の 本を 読むのが なぜ 苦手でしたか。":"ぼくは {日本語|にほんご}の {本|ほん}を {読|よ}むのが なぜ {苦手|にがて}でしたか。","字が 小さいから":"{字|じ}が {小|ちい}さいから","漢字で 目が 止まるから":"{漢字|かんじ}で {目|め}が {止|と}まるから","本が 重いから":"{本|ほん}が {重|おも}いから","母は 何を すすめましたか。":"{母|はは}は {何|なに}を すすめましたか。","一日に 一ページ 声に 出して 読む":"{一日|いちにち}に {一|いっ}ページ {声|こえ}に {出|だ}して {読|よ}む","漢字を 百回 書く":"{漢字|かんじ}を {百回|ひゃっかい} {書|か}く","英語の 本を 読む":"{英語|えいご}の {本|ほん}を {読|よ}む","一か月後、同じ ページを 何分で 読めましたか。":"{一|いっ}{か月|かげつ}{後|ご}、{同|おな}じ ページを {何分|なんぷん}で {読|よ}めましたか。","十分":"{十分|じっぷん}","三分":"{三分|さんぷん}","一分":"{一分|いっぷん}","二つの ことばが 話せて よかったと 思う ことは 何ですか。":"{二|ふた}つの ことばが {話|はな}せて よかったと {思|おも}う ことは {何|なん}ですか。"};
+function rubyHTML(t){ const a=RUBY[t]; if (!a) return esc(t); return esc(a).replace(/\{([^|{}]+)\|([^|{}]+)\}/g,(m,k,r)=>`<span class="qk" data-r="${r}">${k}</span>`); }
+// tapping a dotted kanji shows its reading above it and says it; it never picks an answer
+document.addEventListener("click",(e)=>{ const k=e.target.closest&&e.target.closest(".qk"); if (!k){ document.querySelectorAll(".qk.on").forEach(x=>x.classList.remove("on")); return; } e.stopPropagation(); e.preventDefault(); const was=k.classList.contains("on"); document.querySelectorAll(".qk.on").forEach(x=>x.classList.remove("on")); if (!was){ k.classList.add("on"); try{ speakNow(k.dataset.r,"ja-JP"); }catch(err){} } },true);
 function say(t){ bubble.textContent=t; }
 let lastWordSpoken=null;
 function speakWord(k){ if (!k || isQ(k)) return; const t=k[5]==="w" ? k[0] : `${k[0]}。${k[2]}`; if (lastWordSpoken===t) return; lastWordSpoken=t; setTimeout(()=>speakJa(t), 350); }
@@ -1033,7 +1135,46 @@ try{ $("machaRead").outerHTML = document.querySelector("#writeTab .coach svg").o
 function renderPassageList(){
   const sel=$("passageSel"); sel.innerHTML="";
   for (const p of visiblePassages()){ const o=document.createElement("option"); o.value=p.id; o.textContent=p.title; sel.appendChild(o); }
+  renderCards();
 }
+// what is finished for one story: 📖 read, ❓ questions, ✏️ writing
+function storyStatus(p){
+  const sess=rstore.get("sess."+p.id,[]), qa=rstore.get("qa."+p.id,{});
+  const read=sess.length>0, qs=(p.qs||[]).length>0 && p.qs.every((q,i)=>i in qa), wrote=!!qa.wrote || ("write" in qa);
+  const n=(read?1:0)+(qs?1:0)+(wrote?1:0), last=sess.length?sess[sess.length-1].date:null;
+  return {read,qs,wrote,n,blue:sess.some(x=>x.blue||x.pass),date:last,st:n===3?"done":n>0?"part":"new"};
+}
+function renderCards(){
+  const box=$("storyCards"); if (!box) return; const list=visiblePassages(); box.innerHTML=""; let done=0;
+  for (const p of list){ const s=storyStatus(p); if (s.st==="done") done++;
+    const b=document.createElement("button"); b.type="button"; b.className="scard"; b.dataset.st=s.st; b.dataset.id=p.id; if (rp && rp.id===p.id) b.setAttribute("aria-current","true");
+    const left=[!s.read&&"📖",!s.qs&&"❓",!s.wrote&&"✏️"].filter(Boolean).join(" ");
+    const badge = s.st==="done" ? "✔ DONE"+(s.date?" · "+niceDate(s.date).replace(/, \d+$/,""):"") : s.st==="part" ? "Left: "+left : "NEW";
+    b.innerHTML=`<span class="t">${esc(p.title.replace(/\s*\(Grade \d\)\s*$/,""))}${s.blue?" 💙":""}</span><span class="st"><span class="${s.read?"y":""}">📖</span><span class="${s.qs?"y":""}">❓</span><span class="${s.wrote?"y":""}">✏️</span></span><span class="bd">${badge}</span>`;
+    b.onclick=()=>{ autoArmed=true; loadPassage(p.id); };
+    box.appendChild(b); }
+  const cur=box.querySelector('[aria-current="true"]'); if (cur && cur.scrollIntoView) try{ cur.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){}
+  const pr=$("storyProg"); if (pr) pr.innerHTML=`<span>${done} of ${list.length} stories DONE</span><span class="bar"><i style="width:${list.length?Math.round(done/list.length*100):0}%"></i></span>`;
+  const nx=$("nextStory"); if (nx) nx.hidden=!list.some(p=>storyStatus(p).st!=="done");
+}
+$("nextStory").onclick=()=>{ const list=visiblePassages(); const i=rp?list.findIndex(p=>p.id===rp.id):-1; const order=list.slice(i+1).concat(list.slice(0,i+1)); const nx=order.find(p=>storyStatus(p).st!=="done"); if (nx){ autoArmed=true; loadPassage(nx.id); } };
+// records arrived from another device: show them
+function afterPull(full){
+  profiles=store.get("pq.profiles",profiles);
+  if (full && !reading && !shadowOn){ renderWho(); syncGrade(); renderGrid(); renderStars(); renderStamp(); renderPassageList(); loadPassage(pickPassageId()); }
+  else { renderStars(); renderStamp(); renderCards(); }
+  try{ renderReport(); }catch(e){}
+}
+$("syncChip").onclick=()=>{ $("syncBox").hidden=!$("syncBox").hidden; $("syncErr").hidden=true; renderSync(); if (!$("syncBox").hidden) sync.pull(false); };
+$("syncCopy").onclick=async ()=>{ try{ await navigator.clipboard.writeText(sync.code); $("syncCopy").textContent="Copied ✔"; setTimeout(()=>$("syncCopy").textContent="Copy",1500); }catch(e){} };
+$("syncJoin").onclick=async ()=>{
+  const err=$("syncErr"), code=$("syncInput").value.trim().toUpperCase().replace(/\s+/g,""); err.hidden=true;
+  if (!CODE_RE.test(code)){ err.textContent="That doesn't look like a family code. It looks like MACHA-XXXX-XXXX-XXXX."; err.hidden=false; return; }
+  if (code===sync.code){ err.textContent="This device is already using that code."; err.hidden=false; return; }
+  $("syncJoin").disabled=true; $("syncJoin").textContent="Checking…"; const res=await sync.join(code); $("syncJoin").disabled=false; $("syncJoin").textContent="Use this code";
+  if (res==="ok"){ $("syncInput").value=""; renderSync(); afterPull(true); rb("Connected! This device now shows your family's records ☁️"); }
+  else { err.textContent = res==="missing" ? "No family was found with that code. Check each letter and try again." : "Couldn't reach the cloud. Check the internet and try again."; err.hidden=false; }
+};
 $("passageSel").onchange=()=>{ autoArmed=true; loadPassage($("passageSel").value); };
 // Macha reads the story first, by herself, the first time it opens each day (after any tap, since iPad needs one before it will speak)
 let autoArmed=false, autoTimer=null;
@@ -1074,7 +1215,7 @@ function loadPassage(id){
   $("plan").textContent = `Day ${day} of 3 · ` + (day===1?"Macha reads, then you read":day===2?"Read again, then answer questions":"Read, then write about it");
   $("qs").hidden = day<2; $("qsLock").hidden = day>=2; $("writeQ").hidden = day<3;
   if (day>=2) renderQuestions();
-  if (day>=3){ $("wprompt").textContent=rp.write.q; $("wans").value=""; $("wfeedback").hidden=true; }
+  if (day>=3){ $("wprompt").innerHTML=rubyHTML(rp.write.q); $("wans").value=""; $("wfeedback").hidden=true; }
   rb(day===1 ? "New story! Listen to me first, then you read it." : `Welcome back! Last time: ${fmtSess(sessions[sessions.length-1])}. Let's beat it.`);
   autoRead();
   renderReport();
@@ -1308,7 +1449,7 @@ $("doneRead").onclick=()=>{
   renderReport();
 };
 function allAnswered(){ const a=rstore.get("qa."+rp.id,{}); return rp.qs.every((q,i)=>i in a); }
-function openWrite(){ const w=$("writeQ"); if (!w.hidden) return; $("wprompt").textContent=rp.write.q; $("wans").value=""; $("wfeedback").hidden=true; w.hidden=false; }
+function openWrite(){ const w=$("writeQ"); if (!w.hidden) return; $("wprompt").innerHTML=rubyHTML(rp.write.q); $("wans").value=""; $("wfeedback").hidden=true; w.hidden=false; }
 function giveStar(){ const d=pdata(); d.stars=(d.stars||0)+1; savep(d); renderStars(); const p=$("pop"); p.classList.remove("on"); void p.offsetWidth; p.classList.add("on"); }
 
 // ---- red word: Macha reads it, the child says it, it turns green
@@ -1409,9 +1550,9 @@ function renderQuestions(){
   const box=$("qlist"); box.innerHTML="";
   rp.qs.forEach((q,qi)=>{
     const d=document.createElement("div"); d.className="q";
-    d.innerHTML=`<div class="qt">${qi+1}. ${esc(q.q)}</div><div class="opts"></div><div class="why" hidden></div>`;
+    d.innerHTML=`<div class="qt">${qi+1}. ${rubyHTML(q.q)}</div><div class="opts"></div><div class="why" hidden></div>`;
     const ob=d.querySelector(".opts"), why=d.querySelector(".why");
-    q.opts.forEach((o,oi)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=["ア","イ","ウ"][oi]+" "+o;
+    q.opts.forEach((o,oi)=>{ const b=document.createElement("button"); b.type="button"; b.innerHTML=["ア","イ","ウ"][oi]+" "+rubyHTML(o);
       b.onclick=()=>{ ob.querySelectorAll("button").forEach(x=>x.classList.remove("right","wrong")); if (oi===q.a){ b.classList.add("right"); why.hidden=false; why.textContent="Right! ⭕"; cheer("Right!"); } else { b.classList.add("wrong"); why.hidden=false; why.textContent="Not that one. "+q.why; cheer("Not that one. "+q.why); } const a=rstore.get("qa."+rp.id,{}); a[qi]=(oi===q.a); rstore.set("qa."+rp.id,a); renderReport(); if (allAnswered() && $("writeQ").hidden){ openWrite(); setTimeout(()=>{ rb("Great! Now write about it ✏️"); try{ $("writeQ").scrollIntoView({block:"start",behavior:"smooth"}); }catch(e){} }, 1200); } };
       ob.appendChild(b); });
     box.appendChild(d);
@@ -1419,6 +1560,7 @@ function renderQuestions(){
 }
 $("wcheck").onclick=async ()=>{
   const ans=$("wans").value.trim(); const fb=$("wfeedback"); if (!ans){ rb("Say your answer out loud first, then type it."); return; }
+  { const a=rstore.get("qa."+rp.id,{}); a.wrote=true; rstore.set("qa."+rp.id,a); rstore.set("wr."+rp.id,ans.slice(0,400)); renderReport(); }
   fb.hidden=false; fb.textContent="Macha is reading your answer…";
   if (!live){ fb.textContent="Macha can't check here. Show it to a parent. Example answer: "+rp.write.model; return; }
   try{
@@ -1460,6 +1602,7 @@ function renderCalendar(){
   return h;
 }
 function renderReport(){
+  try{ renderCards(); }catch(e){}
   const sessions=rstore.get("sess."+rp.id,[]); const cards=Object.values(rstore.get("cards",{})); const taps=rstore.get("taps",{}); const qa=rstore.get("qa."+rp.id,{});
   const learned=cards.filter(c=>c.streak>=3).length;
   let h=`<p><b>${profiles[who].name}</b> · ${rp.title}</p>`;
@@ -1499,6 +1642,7 @@ $("addGo").onclick=async ()=>{
 // restore last tab
 try{ setWMode("story"); }catch(e){}
 try{ showTab(store.get("pq.tab","read")); }catch(e){ console.error("read init", e); try{ renderPassageList(); loadPassage(allPassages()[0].id); }catch(e2){} }
+try{ renderSync(); sync.start(); }catch(e){ console.error("sync init", e); }
 
 </script>
 
