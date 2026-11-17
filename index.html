@@ -618,8 +618,23 @@ function drawGuide(){
     gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(1,S/300); gctx.setLineDash([S/60,S/60]);
     gctx.beginPath(); gctx.moveTo(S/2,oy); gctx.lineTo(S/2,oy+S); gctx.moveTo(0,oy+S/2); gctx.lineTo(S,oy+S/2); gctx.stroke(); gctx.restore();
     if (i>0){ gctx.save(); gctx.strokeStyle=line; gctx.lineWidth=Math.max(2,S/120); gctx.beginPath(); gctx.moveTo(0,oy); gctx.lineTo(S,oy); gctx.stroke(); gctx.restore(); }
-    if (guideOn && chars[i]){ gctx.globalAlpha=.55; glyph(gctx,S,chars[i],g,0,oy); gctx.globalAlpha=1; }
+    if (guideOn && chars[i]){ gctx.globalAlpha=.55; glyph(gctx,S,chars[i],g,0,oy); gctx.globalAlpha=1; drawStarts(gctx,S,chars[i],oy); }
   }
+}
+// where each stroke starts and which way it goes: a green dot with the stroke number, and a short arrow
+function arrowTo(ctx,x1,y1,x2,y2,h){ const a=Math.atan2(y2-y1,x2-x1); ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2-h*Math.cos(a-0.5),y2-h*Math.sin(a-0.5)); ctx.lineTo(x2-h*Math.cos(a+0.5),y2-h*Math.sin(a+0.5)); ctx.closePath(); ctx.fill(); }
+function strokeDir(pts){ const a=pts[0]; let b=pts[3]; for (let i=1;i<pts.length;i++){ if (Math.hypot(pts[i].x-a.x,pts[i].y-a.y)>0.05){ b=pts[i]; break; } } const dx=b.x-a.x, dy=b.y-a.y, L=Math.hypot(dx,dy)||1; return {dx:dx/L, dy:dy/L}; }
+function drawStarts(ctx, S, ch, oy, only, color){
+  const P=soPoints(ch); if (!P) return;
+  const sea=color||getComputedStyle(document.documentElement).getPropertyValue("--sea").trim()||"#3A9D5D";
+  const k=P.length>10?0.72:P.length>6?0.85:1;   // smaller marks for kanji with many strokes
+  ctx.save(); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.font=`800 ${Math.round(S*0.05*k)}px ${getComputedStyle(document.body).fontFamily}`;
+  P.forEach((pts,i)=>{ if (only!=null && only!==i) return; const a=pts[0], d=strokeDir(pts); const r=S*0.03*k, x=a.x*S-d.dx*r*1.5, y=oy+a.y*S-d.dy*r*1.5;   // sit just behind the start, so two strokes that begin at the same corner both show
+    ctx.strokeStyle=sea; ctx.fillStyle=sea; ctx.lineWidth=S*0.012*k; arrowTo(ctx, x+d.dx*r*1.2, y+d.dy*r*1.2, x+d.dx*S*0.105*k, y+d.dy*S*0.105*k, S*0.03*k);
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=sea; ctx.fill(); ctx.lineWidth=S*0.006; ctx.strokeStyle="#fff"; ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.fillText(String(i+1), x, y+S*0.003); });
+  ctx.restore();
 }
 // stroke numbers at the start of each stroke, like a kanji drill book
 // stroke order strip: the character built up one stroke at a time, newest stroke in green (like a kanji drill)
@@ -633,6 +648,9 @@ function renderOrder(){
       x.save(); x.scale(S/109,S/109); x.lineCap="round"; x.lineJoin="round"; x.lineWidth=109*0.075;
       for (let j=0;j<k;j++){ x.strokeStyle=g; x.stroke(new Path2D(P[j])); }
       x.strokeStyle=sea; x.stroke(new Path2D(d)); x.restore();
+      const pp=(soPoints(ch)||[])[k]; if (pp){ const a=pp[0], e=pp[15], e0=pp[13]; x.save(); x.fillStyle="#E8733C"; x.strokeStyle="#E8733C"; x.lineWidth=S*0.03; x.lineCap="round";
+        if (Math.hypot(e.x-a.x,e.y-a.y)>0.08 || Math.hypot(e.x-e0.x,e.y-e0.y)>0.02) arrowTo(x, e0.x*S, e0.y*S, e.x*S, e.y*S, S*0.11);
+        x.beginPath(); x.arc(a.x*S,a.y*S,S*0.06,0,Math.PI*2); x.fillStyle="#fff"; x.fill(); x.lineWidth=S*0.03; x.strokeStyle=sea; x.stroke(); x.restore(); }
       const n=document.createElement("span"); n.textContent=k+1; w.appendChild(c); w.appendChild(n); box.appendChild(w); }); });
 }
 function drawNumbers(ctx, S, ch, oy){
@@ -704,7 +722,20 @@ drawC.addEventListener("pointermove", e=>{
   for (const ev of evs) drawing.push(pt(ev));
   redraw();
 });
-const end = e=>{ if (drawing){ drawing=null; $("check").disabled=false; } };
+// a stroke written from its end toward its start: say so right away, take that stroke back, and flash where it starts
+let flashTimer=null;
+function wrongWay(st){
+  if (!st || st.length<4) return null; const N=nCells(), ci=cellOf(st), ch=cellChars()[ci]; if (!ch) return null; const E=soPoints(ch); if (!E) return null;
+  const d=resample(st.map(p=>({x:p.x, y:(p.y-ci/N)*N})),16), rev=d.slice().reverse(); let best=-1, bd=1e9;
+  E.forEach((e,i)=>{ const v=strokeDist(d,e); if (v<bd){ bd=v; best=i; } }); if (best<0 || bd>0.16) return null;   // not close to any stroke of the model: leave it for Check
+  const e=E[best], len=Math.hypot(e[0].x-e[15].x,e[0].y-e[15].y); if (len<0.14) return null;                     // dots and tiny strokes have no clear direction
+  const fwd=d.reduce((s,p,i)=>s+Math.hypot(p.x-e[i].x,p.y-e[i].y),0), back=rev.reduce((s,p,i)=>s+Math.hypot(p.x-e[i].x,p.y-e[i].y),0);
+  return back<fwd*0.6 ? {ci,ch,si:best} : null;
+}
+function flashStart(w){ const S=guideC.width; clearTimeout(flashTimer); drawGuide(); let n=0;
+  const tick=()=>{ drawGuide(); if (n%2===0) drawStarts(gctx,S,w.ch,w.ci*S,w.si,"#E8733C"); n++; if (n<6) flashTimer=setTimeout(tick,280); else drawGuide(); }; tick(); }
+const end = e=>{ if (drawing){ const st=drawing; drawing=null; $("check").disabled=false;
+  let w=null; try{ w=wrongWay(st); }catch(err){} if (w){ strokes.pop(); redraw(); flashStart(w); say("Oops, that one goes the other way! Start from the dot ● and follow the arrow."); try{ cheer("Other way! Start from the dot."); }catch(err){} } } };
 drawC.addEventListener("pointerup", end); drawC.addEventListener("pointercancel", end); drawC.addEventListener("pointerleave", end);
 
 $("undo").onclick=()=>{ strokes.pop(); redraw(); };
