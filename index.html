@@ -1612,15 +1612,19 @@ function wbInk(){ let len=0; for (const st of wb.strokes) for (let k=2;k<st.leng
   window.addEventListener("resize",()=>{ if (!$("writeQ").hidden) wbDraw(); }); }
 $("wundo").onclick=()=>{ wb.strokes.pop(); wbDraw(); wbSave(); };
 $("wclear").onclick=()=>{ wb.strokes=[]; wbDraw(); wbSave(); $("wfeedback").hidden=true; };
-function wbImage(){ const c=document.createElement("canvas"), src=$("wcanvas"); const W=1200, H=Math.round(W*src.height/src.width); c.width=W; c.height=H; const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,W,H);
-  x.lineCap="round"; x.lineJoin="round"; x.strokeStyle="#000"; x.lineWidth=6; for (const st of wb.strokes){ x.beginPath(); x.moveTo(st[0]/1000*W, st[1]/1000*H); if (st.length<=2) x.lineTo(st[0]/1000*W+1, st[1]/1000*H); for (let k=2;k<st.length;k+=2) x.lineTo(st[k]/1000*W, st[k+1]/1000*H); x.stroke(); }
+function wbImage(){ const c=document.createElement("canvas"), src=$("wcanvas"); const W=800, H=Math.round(W*src.height/src.width); c.width=W; c.height=H; const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,W,H);
+  x.lineCap="round"; x.lineJoin="round"; x.strokeStyle="#000"; x.lineWidth=5; for (const st of wb.strokes){ x.beginPath(); x.moveTo(st[0]/1000*W, st[1]/1000*H); if (st.length<=2) x.lineTo(st[0]/1000*W+1, st[1]/1000*H); for (let k=2;k<st.length;k+=2) x.lineTo(st[k]/1000*W, st[k+1]/1000*H); x.stroke(); }
   return new Promise(res=>c.toBlob(res,"image/png")); }
 // Macha reads the handwriting. Returns null when no reader is connected on this page.
-const AI_READ_URL="";   // the address of Animal Sensei's own reading service, once it exists
+const AI_READ_URL="https://animal-sensei-macha.junyo1019.workers.dev/";   // Animal Sensei's own reading service (Cloudflare Workers AI, free daily allowance)
 async function readHandwriting(blob){
   const prompt=`The image is a child's handwritten answer in Japanese (hiragana, katakana or kanji, any mix is fine; the child is 8 to 10, grew up in the US and is learning Japanese, so letters may be wobbly). The story is for Japanese grade ${rp.level}. Question: ${rp.write.q} Example of a good answer: ${rp.write.model} First read what the child wrote. Then judge only this: can you understand what the child means, and does it answer the question? Spelling slips, missing kanji and messy letters are fine as long as the meaning is clear. Reply with only this JSON: {"read": "what the child wrote, exactly as you read it", "ok": true or false, "praise": "one friendly sentence in simple English, max 12 words", "fix": "if the Japanese needs fixing, the corrected Japanese sentence; otherwise empty string", "tip": "one short tip in simple English, max 14 words"}`;
   if (live) return await live.json(prompt, {images: blob, modelTier:"default", cache:false});
-  if (AI_READ_URL){ const fd=new FormData(); fd.append("image",blob,"answer.png"); fd.append("prompt",prompt); const r=await fetch(AI_READ_URL,{method:"POST",body:fd}); if (!r.ok) throw new Error("read "+r.status); return await r.json(); }
+  if (AI_READ_URL){
+    const image=await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(blob); });
+    const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),45000);
+    try{ const r=await fetch(AI_READ_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image, q:rp.write.q, example:rp.write.model, level:rp.level}),signal:ctl.signal});
+      if (!r.ok) throw new Error("read "+r.status); const j=await r.json(); if (j.error) throw new Error(j.error); return j; } finally{ clearTimeout(to); } }
   return null;
 }
 $("wcheck").onclick=async ()=>{
