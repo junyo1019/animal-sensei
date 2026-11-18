@@ -180,6 +180,47 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
   background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 2px), #DCE7DD calc(25% - 2px), #DCE7DD 25%)}
 .wboard canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .qhint{font-size:13px;color:var(--muted);margin:0 0 8px}
+/* ---------- Kanji Check (daily quiz) */
+.kqcard{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#FFF4CC,#E4F3E8);border:3px solid var(--sun);border-radius:20px;padding:12px 16px;margin:0 0 12px;color:#1F2A33}
+.kqcard .ic{font-size:34px}
+.kqcard .tx{flex:1;font-weight:700;font-size:14px;line-height:1.35}
+.kqcard .tx b{font-family:var(--display);font-size:19px;display:block}
+.kqcard .go{font-size:17px;padding:12px 18px}
+.kq{position:fixed;inset:0;z-index:60;background:rgba(15,30,45,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.kq[hidden]{display:none}
+.kqp{background:var(--paper);color:var(--ink);border-radius:26px;width:min(860px,100%);max-height:100%;overflow:auto;padding:18px 20px 20px;box-shadow:0 20px 60px rgba(0,0,0,.35);position:relative}
+.kqtop{display:flex;align-items:center;gap:10px;font-weight:800;font-family:var(--display)}
+.kqdots{display:flex;gap:6px;flex:1}
+.kqdots i{width:16px;height:16px;border-radius:50%;background:var(--line);display:block}
+.kqdots i.ok{background:var(--ok)} .kqdots i.ng{background:var(--warn)} .kqdots i.now{outline:3px solid var(--sun);outline-offset:1px}
+.kqpts{font-size:20px} .kqcombo{color:#E8733C;font-size:18px;min-width:70px;text-align:right}
+.kqtime{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:10px 0 6px}
+.kqtime i{display:block;height:100%;background:var(--sun);width:100%}
+.kqlabel{font-weight:800;color:var(--muted);font-size:14px;margin:8px 0 4px;text-align:center}
+.kqsent{font-family:var(--model);font-size:24px;line-height:2;text-align:center;margin:6px 0 10px}
+.kqsent .tw{display:inline-block;font-size:52px;line-height:1.2;padding:2px 12px;border:4px solid var(--sun);border-radius:14px;margin:0 4px;background:#FFF8DD;color:#1F2A33;vertical-align:middle}
+.kqsent .tb{display:inline-block;padding:0 10px;border-bottom:4px solid var(--sea);color:var(--sea);font-weight:700;margin:0 4px}
+.kqopts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0}
+.kqopts button{font-family:var(--model);font-size:26px;padding:16px 8px;border-radius:18px;border:3px solid var(--line);background:var(--paper);color:var(--ink);font-weight:700}
+.kqopts button.ok{background:#D9F2E3;border-color:var(--ok);color:#1E7A45}
+.kqopts button.ng{background:#FBE1D5;border-color:var(--warn);color:#B3261E;animation:kqshake .35s}
+@keyframes kqshake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.kqboard{position:relative;margin:6px auto;touch-action:none}
+.kqboard canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;border-radius:16px}
+.kqrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.kqmsg{text-align:center;font-weight:800;font-size:18px;min-height:28px;margin-top:8px}
+.kqmsg.ok{color:var(--ok)} .kqmsg.ng{color:var(--warn)}
+.kqend{text-align:center}
+.kqend .big{font-family:var(--display);font-size:40px;margin:6px 0}
+.kqend .stars{font-size:46px;letter-spacing:6px}
+.kqend .st{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+.kqend .st span{background:var(--bg);border-radius:14px;padding:8px 12px;font-weight:800}
+.kqpop{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font-family:var(--display);font-size:46px;font-weight:900;pointer-events:none;opacity:0}
+.kqpop.on{animation:kqpop .9s ease-out}
+@keyframes kqpop{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-120%) scale(1)}}
+.kqconf{position:fixed;inset:0;pointer-events:none;z-index:61;overflow:hidden}
+.kqconf i{position:absolute;top:-30px;font-style:normal;font-size:26px;animation:kqfall 2.2s linear forwards}
+@keyframes kqfall{to{transform:translateY(110vh) rotate(540deg)}}
 .rtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .pick{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .pick label{font-size:13px;color:var(--muted)}
@@ -300,6 +341,8 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   <p class="hint">If the link only opens inside this app: copy it, open Safari, and paste it into the address bar. You need to be signed in to claude.ai in Safari.</p>
 </div>
 
+<div class="kq" id="kq" hidden role="dialog" aria-label="Kanji Check"><div class="kqp" id="kqp"></div></div>
+<div class="kqconf" id="kqConf"></div>
 <div class="clock" id="clock" aria-live="off">
   <div><div class="lbl" id="clockLbl">TODAY · 25 MIN</div><div class="big" id="clockBig">25:00</div></div>
   <div class="steps" id="clockSteps" hidden></div>
@@ -371,6 +414,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
     </div>
     <div class="plan" id="plan"></div>
   </div>
+  <div class="kqcard" id="kqCard"><div class="ic">🎯</div><div class="tx" id="kqCardTx"><b>Kanji Check</b>5 quick questions</div><button class="chip go" id="kqStart" type="button">▶ Start</button></div>
   <div class="sprog" id="storyProg"></div>
   <div class="scards" id="storyCards" aria-label="Stories"></div>
 
@@ -1171,6 +1215,167 @@ function renderPassageList(){
   for (const p of visiblePassages()){ const o=document.createElement("option"); o.value=p.id; o.textContent=p.title; sel.appendChild(o); }
   renderCards();
 }
+// ==================== Kanji Check: a daily 5-question quiz on kanji from the app's stories ====================
+// Spaced practice: a kanji answered right comes back later and later (1, 3, 7, 14, 30 days).
+// A kanji answered wrong, or "I don't know", comes back at the end of today's quiz and again tomorrow, until it is right several days in a row.
+const KQ_GAP=[0,1,3,7,14,30], KQ_N=5, KQ_SECS=12;
+function kqAddDays(d,n){ const t=new Date(d+"T12:00:00"); t.setDate(t.getDate()+n); return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0"); }
+function kqHasKanji(w){ return /[一-鿿々]/.test(w); }
+function kqWritable(w){ return /^[一-鿿々]+$/.test(w) && w.length<=3 && [...w].every(c=>{ try{ return !!soPoints(c); }catch(e){ return false; } }); }
+function kqSentences(P){ const sents=[]; let cur=[]; for (const t of P.tokens){ const o=typeof t==="string"?{s:t}:{s:t[0],r:t[1]}; cur.push(o); if (/[。！？]$/.test(o.s.trim())){ sents.push(cur); cur=[]; } } if (cur.length) sents.push(cur); return sents; }
+function kqPool(){   // kanji words from stories already read in this grade first, then the rest of this grade's stories
+  const vis=visiblePassages(), readFirst=vis.filter(p=>rstore.get("sess."+p.id,[]).length).concat(vis.filter(p=>!rstore.get("sess."+p.id,[]).length));
+  const seen=new Map();
+  for (const P of readFirst) for (const sn of kqSentences(P)) for (const o of sn){ if (!o.r || !kqHasKanji(o.s) || seen.has(o.s)) continue; seen.set(o.s,{w:o.s, r:o.r, pid:P.id, sent:sn}); }
+  return [...seen.values()];
+}
+function kqPick(){
+  const pool=kqPool(), st=rstore.get("kq",{}), t=today(); if (!pool.length) return [];
+  const due=pool.filter(x=>st[x.w] && st[x.w].due<=t).sort((a,b)=>(st[a.w].box-st[b.w].box)||(st[a.w].due<st[b.w].due?-1:1));
+  const fresh=pool.filter(x=>!st[x.w]);
+  const later=pool.filter(x=>st[x.w] && st[x.w].due>t).sort((a,b)=>(st[a.w].box-st[b.w].box)||(st[a.w].due<st[b.w].due?-1:1));
+  const pick=[]; const add=x=>{ if (pick.length<KQ_N && !pick.includes(x)) pick.push(x); };
+  due.slice(0,4).forEach(add); fresh.slice(0,Math.max(1,KQ_N-pick.length)).forEach(add); due.forEach(add); fresh.forEach(add); later.forEach(add);
+  // question type: kanji that are new or still shaky are "pick the reading"; kanji that are getting solid are "write it"; at least 3 reading questions for confidence
+  const qs=pick.map(x=>{ const b=(st[x.w]||{}).box||0; return {...x, type:(b>=2 && kqWritable(x.w))?"write":"read"}; });
+  let reads=qs.filter(q=>q.type==="read").length; for (const q of qs){ if (reads>=3) break; if (q.type==="write"){ q.type="read"; reads++; } }
+  for (let i=qs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [qs[i],qs[j]]=[qs[j],qs[i]]; }
+  qs.sort((a,b)=>(a.type==="read"?0:1)-(b.type==="read"?0:1));   // easy start: reading questions first
+  return qs;
+}
+function kqChoices(q){   // the right reading and two believable wrong ones
+  const all=new Set(); for (const P of allPassages()) for (const t of P.tokens) if (typeof t!=="string" && kqHasKanji(t[0]) && t[1]!==q.r) all.add(t[1]);
+  const cands=[...all].sort((a,b)=>Math.abs(a.length-q.r.length)-Math.abs(b.length-q.r.length)||(Math.random()-.5));
+  const near=cands.filter(r=>Math.abs(r.length-q.r.length)<=1);
+  const out=[q.r]; for (const r of (near.length>=2?near:cands)){ if (out.length>=3) break; if (!out.includes(r) && Math.random()<0.7) out.push(r); }
+  for (const r of cands){ if (out.length>=3) break; if (!out.includes(r)) out.push(r); }
+  for (let i=out.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [out[i],out[j]]=[out[j],out[i]]; }
+  return out;
+}
+function kqStreak(){ const d=rstore.get("kqDays",{}); let n=0, t=today(); if (!d[t]) t=kqAddDays(t,-1); while (d[t]){ n++; t=kqAddDays(t,-1); } return n; }
+function kqMastered(){ return Object.values(rstore.get("kq",{})).filter(x=>x.box>=3).length; }
+function kqRecord(w, r, ok){
+  const st=rstore.get("kq",{}), x=st[w]||{box:0,due:today(),right:0,wrong:0,r};
+  if (ok){ x.box=Math.min(KQ_GAP.length-1, x.box+1); x.right++; x.due=kqAddDays(today(), KQ_GAP[x.box]); }
+  else { x.box=0; x.wrong++; x.due=kqAddDays(today(),1); }   // wrong: back to the start, and again tomorrow
+  x.r=r; st[w]=x; rstore.set("kq",st);
+}
+function renderKqCard(){
+  const tx=$("kqCardTx"), btn=$("kqStart"); if (!tx) return; const d=rstore.get("kqDays",{})[today()], sk=kqStreak(), m=kqMastered();
+  const extra=`${sk?` · 🔥 ${sk} day${sk>1?"s":""} in a row`:""}${m?` · 🏅 ${m} kanji mastered`:""}`;
+  if (d){ tx.innerHTML=`<b>Kanji Check ✔ ${d.score} pts</b>Done today${extra}. Play again for practice?`; btn.textContent="↻ Play again"; }
+  else { tx.innerHTML=`<b>Kanji Check</b>${KQ_N} quick questions${extra}`; btn.textContent="▶ Start"; }
+}
+// sounds: small tones made in the page, no files needed
+let kqAC=null;
+function kqTone(seq){ try{ kqAC=kqAC||new (window.AudioContext||window.webkitAudioContext)(); if (kqAC.state!=="running") kqAC.resume(); let t=kqAC.currentTime;
+  for (const [f,d,type] of seq){ const o=kqAC.createOscillator(), g=kqAC.createGain(); o.type=type||"triangle"; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(g); g.connect(kqAC.destination); o.start(t); o.stop(t+d+0.02); t+=d*0.8; } }catch(e){} }
+const kqSnd={ ok:()=>kqTone([[660,.12],[880,.12],[1320,.22]]), ng:()=>kqTone([[220,.25,"sawtooth"],[180,.3,"sawtooth"]]), tick:()=>kqTone([[1200,.05,"square"]]), win:()=>kqTone([[523,.12],[659,.12],[784,.12],[1047,.35]]) };
+function kqConfetti(){ const box=$("kqConf"); box.innerHTML=""; const e=["🎉","⭐","✨","🌸","🐼","🎊"]; for (let i=0;i<36;i++){ const s=document.createElement("i"); s.textContent=e[i%e.length]; s.style.left=Math.random()*100+"vw"; s.style.animationDelay=(Math.random()*0.8)+"s"; box.appendChild(s); } setTimeout(()=>box.innerHTML="",3400); }
+function kqPop(text,color){ const p=document.createElement("div"); p.className="kqpop on"; p.textContent=text; p.style.color=color; $("kqp").appendChild(p); setTimeout(()=>p.remove(),950); }
+function kqSay(t){ try{ speakNow(t,"ja-JP"); }catch(e){} }
+
+const kq={ qs:[], i:0, pts:0, combo:0, best:0, res:[], retry:[], practice:false, timer:null, t0:0, wb:null };
+function kqOpen(){
+  const qs=kqPick(); if (!qs.length){ rb("Read a story first, then the Kanji Check will have kanji for you!"); return; }
+  kq.practice=!!rstore.get("kqDays",{})[today()]; Object.assign(kq,{qs, i:0, pts:0, combo:0, best:0, res:[], retry:[]});
+  try{ stopShadow(); }catch(e){} $("kq").hidden=false; kqShow();
+}
+function kqClose(){ clearInterval(kq.timer); $("kq").hidden=true; renderKqCard(); }
+function kqSentHTML(q, mode){
+  const t=x=>esc(x.replace(/\s+/g,""));   // spaces only come out of the text, never out of the tags
+  return q.sent.map(o=>{ if (o.s===q.w){ return mode==="read" ? `<span class="tw" lang="ja">${t(o.s)}</span>` : `<span class="tb">${t(o.r)}</span>`; } return t(o.s); }).join("");
+}
+function kqHead(){
+  const total=kq.qs.length, dots=kq.qs.map((q,i)=>`<i class="${kq.res[i]===true?"ok":kq.res[i]===false?"ng":""}${i===kq.i?" now":""}"></i>`).join("");
+  return `<div class="kqtop"><span>🎯</span><div class="kqdots">${dots}</div><span class="kqcombo">${kq.combo>=2?"🔥×"+kq.combo:""}</span><span class="kqpts">${kq.pts} pts</span><button class="chip" id="kqX" type="button" aria-label="Close">✕</button></div>`;
+}
+function kqStartTimer(){ clearInterval(kq.timer); kq.t0=Date.now(); const bar=()=>document.getElementById("kqBar"); let last=KQ_SECS;
+  kq.timer=setInterval(()=>{ const left=Math.max(0,KQ_SECS-(Date.now()-kq.t0)/1000); const b=bar(); if (b) b.style.width=(left/KQ_SECS*100)+"%"; if (Math.ceil(left)<last && left<=3 && left>0){ last=Math.ceil(left); kqSnd.tick(); } if (left<=0) clearInterval(kq.timer); },100); }
+function kqBonus(){ const used=(Date.now()-kq.t0)/1000; return used<KQ_SECS ? Math.round(50*(1-used/KQ_SECS)) : 0; }
+function kqShow(){
+  const q=kq.qs[kq.i], P=$("kqp"); if (!q){ kqEnd(); return; } try{ stopShadow(); }catch(e){}
+  const again=q.again?`<div class="kqlabel">🔁 One more try! You missed this one before.</div>`:"";
+  if (q.type==="read"){
+    P.innerHTML=kqHead()+`<div class="kqtime"><i id="kqBar"></i></div>${again}<div class="kqlabel">How do you read the kanji in the box?</div><div class="kqsent" lang="ja">${kqSentHTML(q,"read")}</div>
+      <div class="kqopts">${kqChoices(q).map(r=>`<button type="button" data-r="${esc(r)}" lang="ja">${esc(r)}</button>`).join("")}</div>
+      <div class="kqrow"><button class="chip" id="kqIdk" type="button">🤔 I don't know</button></div><div class="kqmsg" id="kqMsg"></div>`;
+    P.querySelectorAll(".kqopts button").forEach(b=>b.onclick=()=>kqAnswer(b.dataset.r===q.r, b));
+  } else {
+    P.innerHTML=kqHead()+`<div class="kqtime"><i id="kqBar" style="background:var(--sea)"></i></div>${again}<div class="kqlabel">Write the kanji for the green word ✏️</div><div class="kqsent" lang="ja">${kqSentHTML(q,"write")}</div>
+      <div class="kqboard" id="kqBoard"><canvas id="kqCv"></canvas></div>
+      <div class="kqrow"><button class="chip" id="kqUndo" type="button">↩ Undo</button><button class="chip" id="kqClear" type="button">Clear</button><button class="chip" id="kqHint" type="button">💡 Hint</button><button class="chip" id="kqIdk" type="button">🤔 I don't know</button><button class="chip go" id="kqCheck" type="button">✅ Check</button></div><div class="kqmsg" id="kqMsg"></div>`;
+    kqBoard(q);
+  }
+  $("kqX").onclick=kqClose; $("kqIdk").onclick=()=>kqAnswer(false,null,true);
+  kqStartTimer(); if (q.type==="write") kqSay(q.r);
+}
+function kqAnswer(ok, btn, idk){
+  const q=kq.qs[kq.i]; if (q.answered) return; q.answered=true; clearInterval(kq.timer);
+  const P=$("kqp"); P.querySelectorAll(".kqopts button").forEach(b=>{ b.disabled=true; if (b.dataset.r===q.r) b.classList.add("ok"); }); if (btn && !ok) btn.classList.add("ng");
+  const msg=$("kqMsg");
+  if (ok){
+    const gain=100+kqBonus()+(kq.combo>=1?kq.combo*20:0); kq.combo++; kq.best=Math.max(kq.best,kq.combo); kq.pts+=gain;
+    kqSnd.ok(); kqPop("+"+gain, "#2E9E6B"); msg.className="kqmsg ok";
+    msg.textContent=["せいかい！ Great!","やったね！ Nice!","すごい！ Super!","かんぺき！ Perfect!"][Math.floor(Math.random()*4)]+(kq.combo>=3?` 🔥 ${kq.combo} in a row!`:"");
+  } else {
+    kq.combo=0; kqSnd.ng(); msg.className="kqmsg ng";
+    msg.innerHTML=(idk?"That's OK! Let's learn it: ":"Not this time. ")+`<span lang="ja" style="font-family:var(--model);font-size:24px">${esc(q.w)} ＝ ${esc(q.r)}</span> · It will come back so you can get it next time.`;
+    if (!q.again) kq.retry.push({...q, again:true, answered:false, type:"read"});   // once more at the end of today's quiz
+  }
+  if (!q.again && !kq.practice) kqRecord(q.w, q.r, ok);
+  if (q.again && ok && !kq.practice){ const st=rstore.get("kq",{}); if (st[q.w]) { st[q.w].fixed=today(); rstore.set("kq",st); } }
+  kq.res[kq.i]=ok; kqSay(q.w===q.r?q.r:q.r);
+  if (kq.i===kq.qs.length-1 && kq.retry.length){ kq.qs=kq.qs.concat(kq.retry); kq.retry=[]; }
+  setTimeout(()=>{ kq.i++; kqShow(); }, ok?1300:2600);
+}
+// handwriting board for "write it" questions: one box per kanji, side by side
+function kqBoard(q){
+  const chars=[...q.w], n=chars.length, box=$("kqBoard"), cv=$("kqCv"), maxW=Math.min(box.parentElement.clientWidth, 640), side=Math.min(280, Math.floor((maxW-(n-1)*10)/n));
+  box.style.width=(side*n)+"px"; box.style.height=side+"px";
+  const d=Math.min(window.devicePixelRatio||1,2); cv.width=side*n*d; cv.height=side*d; const x=cv.getContext("2d"); x.scale(d,d);
+  const W={strokes:[], cur:null, pen:false, hint:false}; kq.wb=W;
+  const draw=()=>{ x.clearRect(0,0,side*n,side);
+    for (let i=0;i<n;i++){ const ox=i*side; x.fillStyle="#FFFEF9"; x.fillRect(ox+2,2,side-4,side-4); x.strokeStyle="#CFDDD0"; x.lineWidth=2; x.strokeRect(ox+2,2,side-4,side-4);
+      x.setLineDash([6,6]); x.beginPath(); x.moveTo(ox+side/2,8); x.lineTo(ox+side/2,side-8); x.moveTo(ox+8,side/2); x.lineTo(ox+side-8,side/2); x.stroke(); x.setLineDash([]);
+      if (W.hint){ x.save(); x.translate(ox,0); x.globalAlpha=.25; try{ glyph(x,side,chars[i],"#3A9D5D",0,0); }catch(e){} x.restore(); } }
+    x.lineCap="round"; x.lineJoin="round"; x.strokeStyle="#1F3550"; x.lineWidth=Math.max(5,side*0.035);
+    for (const st of W.strokes){ x.beginPath(); st.forEach((p,k)=>{ const X=p.x*side*n, Y=p.y*side; if (!k) x.moveTo(X,Y); else x.lineTo(X,Y); }); if (st.length===1) x.lineTo(st[0].x*side*n+0.5, st[0].y*side); x.stroke(); } };
+  const P=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width, y:(e.clientY-r.top)/r.height, p:e.pressure||.5}; };
+  cv.onpointerdown=e=>{ if (e.pointerType==="pen") W.pen=true; if (e.pointerType==="touch" && W.pen) return; e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(er){} W.cur=[P(e)]; W.strokes.push(W.cur); draw(); };
+  cv.onpointermove=e=>{ if (!W.cur) return; e.preventDefault(); for (const ev of (e.getCoalescedEvents?e.getCoalescedEvents():[e])) W.cur.push(P(ev)); draw(); };
+  cv.onpointerup=cv.onpointercancel=()=>{ W.cur=null; };
+  $("kqUndo").onclick=()=>{ W.strokes.pop(); draw(); }; $("kqClear").onclick=()=>{ W.strokes=[]; draw(); };
+  $("kqHint").onclick=()=>{ q.hinted=true; W.hint=true; draw(); setTimeout(()=>{ W.hint=false; draw(); },1500); };
+  $("kqCheck").onclick=()=>{
+    if (!W.strokes.length){ $("kqMsg").className="kqmsg"; $("kqMsg").textContent="Write the kanji in the boxes with your pencil ✏️"; return; }
+    const per=chars.map(()=>[]); for (const st of W.strokes){ const mx=st.reduce((a,p)=>a+p.x,0)/st.length; const i=Math.min(n-1,Math.max(0,Math.floor(mx*n))); per[i].push(st.map(p=>({x:p.x*n-i, y:p.y, p:p.p}))); }
+    const rs=chars.map((c,i)=>scoreCell(c, per[i])); const good=rs.every(r=>!r.empty && (r.pass || r.near));
+    if (good){ if (q.hinted) kq.pts-=40; kqAnswer(true); return; }
+    q.tries=(q.tries||0)+1;
+    if (q.tries<2){ const bad=rs.map((r,i)=>(!r.empty&&(r.pass||r.near))?null:chars.length>1?`box ${i+1}`:"it").filter(Boolean); $("kqMsg").className="kqmsg ng"; $("kqMsg").textContent=`Almost! Look again at ${bad.join(" and ")} and try once more. (💡 Hint shows it for a moment)`; kqSnd.ng(); return; }
+    W.hint=true; draw(); kqAnswer(false);
+  };
+  draw();
+}
+function kqEnd(){
+  clearInterval(kq.timer); const first=kq.res.slice(0,Math.min(KQ_N,kq.res.length)); const right=first.filter(Boolean).length, total=first.length;
+  if (!kq.practice){ const d=rstore.get("kqDays",{}); d[today()]={score:kq.pts, right, total}; rstore.set("kqDays",d); try{ markDay("kanji"); }catch(e){} }
+  const stars=right===total?3:right>=total-1?2:right>=Math.ceil(total/2)?1:0, sk=kqStreak(), m=kqMastered();
+  const title=right===total?"PERFECT! 🎉":right>=total-1?"Great job! 🌟":right>0?"Good try! 💪":"Keep going! 🐼";
+  const st=rstore.get("kq",{}), weak=Object.entries(st).filter(([w,x])=>x.wrong>0 && x.box<3).map(([w,x])=>w).slice(0,8);
+  $("kqp").innerHTML=`<div class="kqend"><div class="big">${title}</div><div class="stars">${"⭐".repeat(stars)}${"☆".repeat(3-stars)}</div>
+    <div class="st"><span>✅ ${right} / ${total}</span><span>🏆 ${kq.pts} pts</span><span>🔥 best combo ${kq.best}</span>${sk&&!kq.practice?`<span>📅 ${sk} day${sk>1?"s":""} in a row</span>`:""}<span>🏅 ${m} kanji mastered</span></div>
+    ${weak.length?`<p>Practice kanji (they will come back): <span lang="ja" style="font-family:var(--model);font-size:22px">${weak.map(esc).join("　")}</span></p>`:""}
+    ${kq.practice?`<p>Practice round · today's score stays the same.</p>`:""}
+    <div class="kqrow"><button class="chip go" id="kqDone" type="button">Done</button></div></div>`;
+  $("kqDone").onclick=kqClose;
+  if (right===total){ kqSnd.win(); kqConfetti(); try{ cheer("Perfect! All right!"); }catch(e){} } else { kqSnd.ok(); try{ cheer(right>0?"Good job! The ones you missed will come back to help you remember.":"Nice try! You will see these again soon."); }catch(e){} }
+  if (!kq.practice && right>=total-1){ const d=pdata(); d.stars=(d.stars||0)+1; savep(d); renderStars(); }
+}
+$("kqStart").onclick=kqOpen;
+renderKqCard();
+
 // what is finished for one story: 📖 read, ❓ questions, ✏️ writing
 function storyStatus(p){
   const sess=rstore.get("sess."+p.id,[]), qa=rstore.get("qa."+p.id,{});
@@ -1179,6 +1384,7 @@ function storyStatus(p){
   return {read,qs,wrote,n,blue:sess.some(x=>x.blue||x.pass),date:last,st:n===3?"done":n>0?"part":"new"};
 }
 function renderCards(){
+  try{ renderKqCard(); }catch(e){}
   const box=$("storyCards"); if (!box) return; const list=visiblePassages(); box.innerHTML=""; let done=0;
   for (const p of list){ const s=storyStatus(p); if (s.st==="done") done++;
     const b=document.createElement("button"); b.type="button"; b.className="scard"; b.dataset.st=s.st; b.dataset.id=p.id; if (rp && rp.id===p.id) b.setAttribute("aria-current","true");
@@ -1194,6 +1400,7 @@ function renderCards(){
 $("nextStory").onclick=()=>{ const list=visiblePassages(); const i=rp?list.findIndex(p=>p.id===rp.id):-1; const order=list.slice(i+1).concat(list.slice(0,i+1)); const nx=order.find(p=>storyStatus(p).st!=="done"); if (nx){ autoArmed=true; loadPassage(nx.id); } };
 // records arrived from another device: show them
 function afterPull(full){
+  try{ renderKqCard(); }catch(e){}
   profiles=store.get("pq.profiles",profiles);
   if (full && !reading && !shadowOn){ renderWho(); syncGrade(); renderGrid(); renderStars(); renderStamp(); renderPassageList(); loadPassage(pickPassageId()); }
   else { renderStars(); renderStamp(); renderCards(); }
