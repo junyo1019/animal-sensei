@@ -435,10 +435,8 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
     <div class="bubble" id="wfeedback" hidden></div>
   </section>
 
-  <details class="report">
-    <summary>Parent Report</summary>
-    <div id="report"></div>
-  </details>
+
+  <section class="report calbox" id="calBox" aria-label="Calendar"></section>
 
   <section class="addbox" id="addBox" hidden>
     <h2>Add a story</h2>
@@ -934,7 +932,6 @@ function buildStoryList(){
   const dayN=Math.floor(st.start/WORDS_PER_DAY)+1, days=Math.ceil(all.length/WORDS_PER_DAY);
   $("wmInfo").textContent=`Today's words · set ${dayN} of ${days}`;
   for (const k of dailyKatakana()) out.push(k);
-  if (P.write && P.write.q) out.push(["？", 0, P.write.q, "", "question", "q"]);
   return out;
 }
 function markSetDone(){
@@ -1739,8 +1736,7 @@ function renderReport(){
   h+=`<p>Word cards: ${cards.length} · learned (3 days in a row): ${learned}</p>`;
   const qk=Object.keys(qa); if (qk.length) h+=`<p>Questions: ${qk.map(k=>k==="write"?("write "+(qa[k]?"✅":"✗")):("Q"+(+k+1)+" "+(qa[k]?"✅":"✗"))).join(" · ")}</p>`;
   const heard=rstore.get("heard."+rp.id,""); if (heard) h+=`<p><b>What the iPad heard last time:</b><br><span style="font-family:var(--model)">${esc(heard)}</span></p>`;
-  h+=renderCalendar();
-  $("report").innerHTML=h;
+  const cal=document.getElementById("calBox"); if (cal) cal.innerHTML=renderCalendar();   // the Parent Report panel was removed; only the calendar is shown
 }
 
 // ---------- add a story (paste or photo) with Macha's readings
