@@ -180,6 +180,9 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
   background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 2px), #DCE7DD calc(25% - 2px), #DCE7DD 25%)}
 .wboard canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .qhint{font-size:13px;color:var(--muted);margin:0 0 8px}
+.storyart{display:block;width:min(100%,520px);aspect-ratio:3/2;object-fit:cover;border-radius:20px;margin:6px auto 14px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.storyart[hidden]{display:none}
+.scard .th{width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:10px;background:var(--line);display:block}
 /* ---------- Japan Trip (one prefecture a day) */
 .tripcard{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#DCEBFF,#E4F3E8);border:3px solid #6FA8E8;border-radius:20px;padding:12px 16px;margin:0 0 12px;color:#1F2A33}
 .tripcard .ic{font-size:34px}
@@ -465,6 +468,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   <section class="reader">
     <div class="rmain">
       <div class="progress"><div class="bar" id="rbar"></div></div>
+      <img class="storyart" id="storyArt" alt="" hidden>
       <div class="passage" id="passage" lang="ja"></div>
     </div>
     <aside class="rside">
@@ -1247,6 +1251,14 @@ function renderPassageList(){
   for (const p of visiblePassages()){ const o=document.createElement("option"); o.value=p.id; o.textContent=p.title; sel.appendChild(o); }
   renderCards();
 }
+// ==================== Story pictures (anime style, animals; drawn once by the picture Worker and kept) ====================
+const ART=/*ART*/{"umi": "a cute little panda child with a small green scarf and a big father panda at a sunny beach, blue sea with gentle waves, small fish swimming near the little panda's feet in shallow water, one white cloud in the blue sky", "eki": "a cute little panda child with a small green scarf and an older brother panda waiting on a Japanese train station platform on a summer morning, a station clock, a vending machine, a train arriving in the distance", "g1": "a cute little rabbit child walking a small happy puppy in a park, a big tree with small flowers blooming under it, sunny day", "g3": "a cute little fox child standing on tiptoe reaching for a book on the top shelf in a school library, a book about sea creatures, tall bookshelves, warm light", "g5": "a cute little bear cub and a rabbit child with umbrellas and school backpacks standing before a small bridge on a rainy morning, a fast flowing river, raincoats, puddles", "g6": "cute animal students in a classroom, a little panda child presenting in front of the class next to a globe of the Earth, a fox child raising a hand, recycling bins, bright classroom", "g2b": "a cute little panda child with a small green scarf standing in front of a Japanese classroom on a morning, speaking cheerfully to animal classmates sitting at desks, a kind bear teacher smiling, morning sunlight", "g2c": "cute animal children, a little panda, a rabbit, a fox and a bear cub, in a Japanese elementary school classroom at lunch time, wearing white lunch aprons and caps, trays with bread, corn soup and a small milk carton on the desks, sunny windows", "g2d": "a cute little panda child and a little fox child sharing one umbrella walking home from school in the rain, school backpacks, puddles, dark rainy sky, cozy mood", "g2e": "a cute little panda child with a small green scarf happily reading a letter on blue paper at a desk at home, an open envelope, a framed picture of a grandma panda, cherry blossoms outside the window", "g2f": "a cute little panda child and a smaller little sister panda picking up red and yellow autumn leaves in a park, leaves spinning in the wind, a pond, acorns on the ground", "g2g": "a cute little panda child with a small green scarf choosing an animal picture book in a school library room, books lined up on shelves, a kind owl librarian at the desk, cozy light", "g2h": "a cute little panda child with a small green scarf in rain boots building a big snowman in a snowy yard on a bright quiet morning, snow covering everything, a house behind", "g4b": "a cute little panda child with a small green scarf standing nervously in front of a new classroom introducing himself, animal classmates clapping and smiling at their desks, a kind bear teacher, cherry blossoms outside the window, spring", "g4c": "a cute little rabbit child writing in a small notebook at a school desk, copying from the blackboard, a helpful fox classmate sitting next to her, afternoon classroom", "g4d": "a cute little panda child with a red headband running a relay race holding a baton on a school sports day, animal children cheering, clear blue autumn sky, flags", "g4e": "a cute little rabbit child in rain boots and an old grandpa rabbit with a straw hat in a vegetable field at early morning, tomatoes, cucumbers and eggplants growing, mountains behind", "g4f": "a cute little fox child with a library committee armband putting returned books back on shelves in a school library, a small cart of books, a younger animal child borrowing a book", "g4g": "a cute little panda child and a father panda inside a cozy house on a stormy typhoon night, holding a flashlight, windows with tape, rain and wind outside, potted plants indoors", "g4h": "a cute little panda child with a small green scarf reading a Japanese book at a desk at home in the evening, a pile of books, a warm desk lamp, a happy proud face"}/*ART*/;
+const ART_STYLE="Japanese anime style illustration, clean line art, bright cel shading, vivid colors, cheerful, detailed background, ", ART_END=". no humans, no text, no letters";
+const ART_URL="https://animal-sensei-voice.junyo1019.workers.dev/img?p=";
+function artURL(id){ return ART[id] ? ART_URL+encodeURIComponent(ART_STYLE+ART[id]+ART_END) : ""; }
+function showArt(id){ const im=$("storyArt"); if (!im) return; const u=artURL(id); if (!u){ im.hidden=true; return; }
+  im.hidden=true; im.onload=()=>{ im.hidden=false; }; im.onerror=()=>{ im.hidden=true; }; im.src=u; }
+
 // ==================== Japan Trip: one prefecture a day, from Okinawa to Hokkaido ====================
 // Finishing the day's reading moves Macha to the next prefecture (once a day). 47 stops; then a new lap starts.
 // [kanji, reading, longitude, latitude, emoji, one fun fact]
@@ -1531,7 +1543,7 @@ function renderCards(){
     const b=document.createElement("button"); b.type="button"; b.className="scard"; b.dataset.st=s.st; b.dataset.id=p.id; if (rp && rp.id===p.id) b.setAttribute("aria-current","true");
     const left=[!s.read&&"📖",!s.qs&&"❓",!s.wrote&&"✏️"].filter(Boolean).join(" ");
     const badge = s.st==="done" ? "✔ DONE"+(s.date?" · "+niceDate(s.date).replace(/, \d+$/,""):"") : s.st==="part" ? "Left: "+left : "NEW";
-    b.innerHTML=`<span class="t">${esc(p.title.replace(/\s*\(Grade \d\)\s*$/,""))}${s.blue?" 💙":""}</span><span class="st"><span class="${s.read?"y":""}">📖</span><span class="${s.qs?"y":""}">❓</span><span class="${s.wrote?"y":""}">✏️</span></span><span class="bd">${badge}</span>`;
+    b.innerHTML=`${artURL(p.id)?`<img class="th" loading="lazy" alt="" src="${artURL(p.id)}" onerror="this.remove()">`:""}<span class="t">${esc(p.title.replace(/\s*\(Grade \d\)\s*$/,""))}${s.blue?" 💙":""}</span><span class="st"><span class="${s.read?"y":""}">📖</span><span class="${s.qs?"y":""}">❓</span><span class="${s.wrote?"y":""}">✏️</span></span><span class="bd">${badge}</span>`;
     b.onclick=()=>{ autoArmed=true; loadPassage(p.id); };
     box.appendChild(b); }
   const cur=box.querySelector('[aria-current="true"]'); if (cur && cur.scrollIntoView) try{ cur.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){}
@@ -1568,7 +1580,7 @@ function autoRead(){
   autoTimer=setTimeout(()=>{ if (!autoArmed || $("readTab").hidden || reading) return; rstore.set(key,today()); $("shadow").click(); }, 700);
 }
 
-function loadPassage(id){
+function loadPassage(id){ try{ showArt(id); }catch(e){}
   rp = allPassages().find(p=>p.id===id) || visiblePassages()[0];
   $("passageSel").value=rp.id; rstore.set("lastP", rp.id);
   stopWordListen(); stopShadow(); phase="read"; runFinal=false; setStartLabel();

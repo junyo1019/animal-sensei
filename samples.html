@@ -1,14 +1,13 @@
-<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>絵のサンプル</title>
-<style>body{font-family:system-ui,sans-serif;background:#F6F3EA;color:#1F2A33;margin:0;padding:16px}h1{font-size:22px}h2{font-size:18px;margin:22px 0 8px}
-.g{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}figure{margin:0;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#ddd}figcaption{padding:8px 10px;font-weight:700;text-align:center}</style>
-<h1>動物の絵 サンプル（A・B・C から選んでください）</h1><div id="o"></div>
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ストーリーの絵</title>
+<style>body{font-family:system-ui,sans-serif;background:#F6F3EA;color:#1F2A33;margin:0;padding:12px}h1{font-size:20px}
+.g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}figure{margin:0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#ddd}figcaption{padding:4px 6px;font-weight:700;text-align:center;font-size:12px}</style>
+<h1>ストーリーの絵（全話）</h1><div class="g" id="o"></div>
 <script>
-const V="https://animal-sensei-voice.junyo1019.workers.dev/img?p=";
-const STY=[["A 絵本風","children's picture book illustration, soft gouache and colored pencil, rounded simple shapes, warm gentle colors, cozy, textured paper, "],
-["B アニメ風","Japanese anime style illustration, clean line art, bright cel shading, vivid colors, cheerful, detailed background, "],
-["C 水彩画風","delicate watercolor painting, loose soft washes, light pastel colors, white paper showing through, gentle and airy, "]];
-const SC=[["給食の時間","cute animal children as students, a little panda, a rabbit, a fox and a bear cub, in a Japanese elementary school classroom at lunch time, wearing white lunch aprons and caps, trays with rice, soup and a small milk carton on the desks, sunny windows. no humans, no text, no letters"],
-["海","a cute little panda child and a big father panda at a sunny beach, blue sea with gentle waves, the little panda picking up seashells on the sand, a small crab, summer sky with white clouds. no humans, no text, no letters"]];
-document.getElementById("o").innerHTML=SC.map(s=>`<h2>「${s[0]}」</h2><div class="g">${STY.map(y=>`<figure><img loading="eager" src="${V+encodeURIComponent(y[1]+s[1])}" alt=""><figcaption>${y[0]}</figcaption></figure>`).join("")}</div>`).join("");
+(async()=>{const s=await (await fetch("index.html?"+Date.now())).text();
+const A=JSON.parse(s.split("/*ART*/")[1]),st=JSON.parse(s.match(/ART_STYLE=("(?:[^"\\\\]|\\\\.)*")/)[1]),en=JSON.parse(s.match(/ART_END=("(?:[^"\\\\]|\\\\.)*")/)[1]);
+const V="https://animal-sensei-voice.junyo1019.workers.dev/img?p=",o=document.getElementById("o");
+for(const k in A){const f=document.createElement("figure");f.innerHTML=`<img alt=""><figcaption>${k}</figcaption>`;o.appendChild(f);
+ await new Promise(r=>{const i=f.firstChild;i.onload=i.onerror=r;i.src=V+encodeURIComponent(st+A[k]+en);});}
+document.title="done";})();
 </script></html>
