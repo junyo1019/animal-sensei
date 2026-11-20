@@ -20,8 +20,21 @@ export default {
   async fetch(q, e) {
     const o = q.headers.get("Origin") || "", H = { "access-control-allow-origin": A, vary: "Origin" }, u = new URL(q.url);
     if (q.method === "OPTIONS") return new Response(null, { headers: H });
-    if (o !== A) return Response.json({ ok: 1, service: "Animal Sensei voice" }, { headers: H });
+    const fromApp = o === A || (q.headers.get("Referer") || "").startsWith(A);   // <img> requests carry no Origin, only a Referer
+    if (!fromApp) return Response.json({ ok: 1, service: "Animal Sensei voice" }, { headers: H });
     try {
+      if (u.pathname === "/img") {   // a story picture: made once from its description (FLUX.1 schnell, Apache 2.0), then kept in KV
+        const p = (u.searchParams.get("p") || "").slice(0, 1200);
+        if (!p) return Response.json({ ok: 1 }, { headers: H });
+        const k = "img:" + (await key(p));
+        let a = await e.AUDIO.get(k, { type: "arrayBuffer" });
+        if (!a) {
+          const r = await e.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt: p, steps: 6 });
+          a = Uint8Array.fromBase64(r.image).buffer;
+          await e.AUDIO.put(k, a);
+        }
+        return new Response(a, { headers: { ...H, "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
+      }
       const t = (u.searchParams.get("t") || "").slice(0, 400);
       if (!t) return Response.json({ ok: 1, native: !!Uint8Array.fromBase64 }, { headers: H });
       const a = await clip(e, t);

@@ -180,6 +180,36 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--sun);outli
   background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 2px), #DCE7DD calc(25% - 2px), #DCE7DD 25%)}
 .wboard canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .qhint{font-size:13px;color:var(--muted);margin:0 0 8px}
+/* ---------- Japan Trip (one prefecture a day) */
+.tripcard{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#DCEBFF,#E4F3E8);border:3px solid #6FA8E8;border-radius:20px;padding:12px 16px;margin:0 0 12px;color:#1F2A33}
+.tripcard .ic{font-size:34px}
+.tripcard .tx{flex:1;font-weight:700;font-size:14px;line-height:1.4}
+.tripcard .tx b{font-family:var(--display);font-size:19px;display:block}
+.tripcard .tx .jp{font-family:var(--model);font-size:20px}
+.tripcard .bar{height:8px;border-radius:99px;background:#fff;overflow:hidden;margin-top:6px;max-width:420px}
+.tripcard .bar i{display:block;height:100%;background:#3A7BD5;border-radius:99px}
+.trip{position:fixed;inset:0;z-index:60;background:rgba(15,30,45,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.trip[hidden]{display:none}
+.tripp{background:#F3F9FF;color:#1F2A33;border-radius:26px;width:min(1040px,100%);max-height:100%;overflow:auto;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.35);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;position:relative}
+@media (max-width:760px){ .tripp{grid-template-columns:1fr} }
+.tripmap{background:#CFE8FB;border-radius:20px;overflow:hidden}
+.tripmap svg{display:block;width:100%;height:auto;max-height:78vh}
+.tripside h2{font-family:var(--display);font-size:24px;margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.tripside .x{margin-left:auto}
+.tripnow{background:#fff;border-radius:18px;padding:12px 14px;margin-bottom:10px;border:3px solid #F7B500}
+.tripnow .em{font-size:44px;line-height:1}
+.tripnow .nm{font-family:var(--model);font-size:34px;font-weight:700;line-height:1.3}
+.tripnow .nm small{font-size:16px;color:#6B7F74;margin-left:8px}
+.tripnow p{margin:4px 0 0;font-weight:700;font-size:15px}
+.tripnow .next{color:#3A7BD5;font-size:14px;margin-top:8px}
+.pass{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px;max-height:34vh;overflow:auto;padding-right:2px}
+.pass button{background:#fff;border:2px solid #CFDDD0;border-radius:12px;padding:6px 2px;text-align:center;font-weight:700;color:#1F2A33;line-height:1.15}
+.pass button .e{font-size:22px;display:block}
+.pass button .k{font-family:var(--model);font-size:13px}
+.pass button.todo{opacity:.35;filter:grayscale(1)}
+.pass button.cur{border-color:#F7B500;background:#FFF8DD}
+.tripwelcome{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#F7B500;color:#4A3300;font-family:var(--display);font-weight:800;font-size:22px;padding:8px 20px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.2);z-index:2;white-space:nowrap}
+#tripMacha{transition:transform 1.6s cubic-bezier(.4,0,.2,1)}
 /* ---------- Kanji Check (daily quiz) */
 .kqcard{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#FFF4CC,#E4F3E8);border:3px solid var(--sun);border-radius:20px;padding:12px 16px;margin:0 0 12px;color:#1F2A33}
 .kqcard .ic{font-size:34px}
@@ -341,6 +371,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
   <p class="hint">If the link only opens inside this app: copy it, open Safari, and paste it into the address bar. You need to be signed in to claude.ai in Safari.</p>
 </div>
 
+<div class="trip" id="trip" hidden role="dialog" aria-label="Japan Trip"><div class="tripp" id="tripp"></div></div>
 <div class="kq" id="kq" hidden role="dialog" aria-label="Kanji Check"><div class="kqp" id="kqp"></div></div>
 <div class="kqconf" id="kqConf"></div>
 <div class="clock" id="clock" aria-live="off">
@@ -414,6 +445,7 @@ textarea{width:100%;font:inherit;font-family:var(--model);font-size:18px;padding
     </div>
     <div class="plan" id="plan"></div>
   </div>
+  <div class="tripcard" id="tripCard"><div class="ic">🗾</div><div class="tx" id="tripCardTx"><b>Japan Trip</b></div><button class="chip go" id="tripOpen" type="button">🗾 Map</button></div>
   <div class="kqcard" id="kqCard"><div class="ic">🎯</div><div class="tx" id="kqCardTx"><b>Kanji Check</b>5 quick questions</div><button class="chip go" id="kqStart" type="button">▶ Start</button></div>
   <div class="sprog" id="storyProg"></div>
   <div class="scards" id="storyCards" aria-label="Stories"></div>
@@ -1215,6 +1247,115 @@ function renderPassageList(){
   for (const p of visiblePassages()){ const o=document.createElement("option"); o.value=p.id; o.textContent=p.title; sel.appendChild(o); }
   renderCards();
 }
+// ==================== Japan Trip: one prefecture a day, from Okinawa to Hokkaido ====================
+// Finishing the day's reading moves Macha to the next prefecture (once a day). 47 stops; then a new lap starts.
+// [kanji, reading, longitude, latitude, emoji, one fun fact]
+const TRIP=[
+ ["沖縄","おきなわ",127.68,26.21,"🌺","Warm blue sea, and shisa lion-dogs guard the houses."],
+ ["鹿児島","かごしま",130.56,31.56,"🌋","Sakurajima volcano puffs smoke almost every day."],
+ ["宮崎","みやざき",131.42,31.91,"🥭","Sunny beaches and very sweet mangoes."],
+ ["熊本","くまもと",130.74,32.79,"🏯","A big black castle and a giant volcano, Mount Aso."],
+ ["長崎","ながさき",129.87,32.74,"🍰","Castella sponge cake came here by ship long ago."],
+ ["佐賀","さが",130.30,33.25,"🎈","Every autumn the sky fills with hot-air balloons."],
+ ["福岡","ふくおか",130.42,33.61,"🍜","Famous for tonkotsu ramen from little street stalls."],
+ ["大分","おおいた",131.61,33.24,"♨️","More hot springs than anywhere else in Japan."],
+ ["愛媛","えひめ",132.77,33.84,"🍊","Mikan oranges grow all over the hills."],
+ ["高知","こうち",133.53,33.56,"🐟","Katsuo fish is grilled over a big straw fire."],
+ ["徳島","とくしま",134.56,34.07,"💃","Everyone dances in the Awa Odori summer festival."],
+ ["香川","かがわ",134.04,34.34,"🍲","The udon noodle capital of Japan."],
+ ["岡山","おかやま",133.93,34.66,"🍑","Home of Momotaro, the Peach Boy."],
+ ["広島","ひろしま",132.46,34.40,"⛩️","A big red gate stands in the sea at Miyajima."],
+ ["山口","やまぐち",131.47,34.19,"🐡","Famous for fugu, the puffer fish."],
+ ["島根","しまね",133.05,35.47,"🐰","Izumo Shrine is one of the oldest in Japan."],
+ ["鳥取","とっとり",134.24,35.50,"🏜️","Huge sand dunes right next to the sea."],
+ ["兵庫","ひょうご",135.18,34.69,"🏯","Himeji Castle is white like a flying bird."],
+ ["大阪","おおさか",135.52,34.69,"🐙","Takoyaki octopus balls and lots of jokes."],
+ ["和歌山","わかやま",135.17,34.23,"🍙","Sour ume plums for your rice ball."],
+ ["奈良","なら",135.83,34.69,"🦌","Friendly deer walk around the park and bow."],
+ ["京都","きょうと",135.77,35.02,"🍵","Old temples, and matcha tea, like Macha!"],
+ ["滋賀","しが",135.87,35.00,"🌊","Lake Biwa is the biggest lake in Japan."],
+ ["三重","みえ",136.51,34.73,"🥷","Ninja trained here in the town of Iga."],
+ ["愛知","あいち",136.91,35.18,"🚗","Nagoya Castle has golden fish on its roof."],
+ ["岐阜","ぎふ",136.76,35.42,"🏠","Old farmhouses with steep grass roofs in the snow."],
+ ["福井","ふくい",136.22,36.06,"🦕","Many dinosaur bones were found here."],
+ ["石川","いしかわ",136.66,36.56,"✨","Shiny gold leaf, even on ice cream."],
+ ["富山","とやま",137.21,36.70,"🏔️","In spring a road runs between giant walls of snow."],
+ ["長野","ながの",138.18,36.65,"🐒","Snow monkeys take baths in the hot springs."],
+ ["山梨","やまなし",138.57,35.66,"🍇","Grapes and peaches, with Mount Fuji behind."],
+ ["静岡","しずおか",138.38,34.98,"🗻","Mount Fuji and green tea fields."],
+ ["神奈川","かながわ",139.64,35.45,"🚢","Yokohama has a big port and a big Chinatown."],
+ ["東京","とうきょう",139.69,35.69,"🗼","The capital of Japan. So many trains!"],
+ ["千葉","ちば",140.12,35.60,"✈️","Planes from far away land at Narita Airport."],
+ ["埼玉","さいたま",139.65,35.86,"🚃","A museum full of real trains."],
+ ["群馬","ぐんま",139.06,36.39,"🎎","Round red daruma dolls for good luck."],
+ ["栃木","とちぎ",139.88,36.57,"🍓","The sweetest strawberries, and the Nikko shrines."],
+ ["茨城","いばらき",140.45,36.34,"🚀","Natto beans, and a space center in Tsukuba."],
+ ["福島","ふくしま",140.47,37.75,"🐮","Akabeko, the red cow toy that nods its head."],
+ ["新潟","にいがた",139.02,37.90,"🍚","The best rice in Japan grows here."],
+ ["山形","やまがた",140.36,38.24,"🍒","Shiny red cherries every summer."],
+ ["宮城","みやぎ",140.87,38.27,"🎋","Sendai has a giant Tanabata star festival."],
+ ["秋田","あきた",140.10,39.72,"🐕","Home of the fluffy Akita dog."],
+ ["岩手","いわて",141.15,39.70,"🥢","Wanko soba: how many little bowls can you eat?"],
+ ["青森","あおもり",140.74,40.82,"🍎","More apples than anywhere in Japan."],
+ ["北海道","ほっかいどう",141.35,43.06,"⛄","Lots of snow, a snow festival, and yummy milk."]
+];
+const TRIP_LAND=[   // simple coastlines, [longitude, latitude]
+ [[140.0,41.5],[140.3,42.2],[139.8,42.6],[140.5,43.2],[141.3,43.2],[141.6,44.0],[141.7,45.2],[141.9,45.5],[142.6,45.0],[143.5,44.3],[144.3,44.0],[145.3,44.3],[145.1,43.8],[145.8,43.4],[144.4,43.0],[143.3,42.3],[143.2,42.0],[142.0,42.5],[141.0,42.4],[140.4,42.5],[141.0,41.8],[140.4,41.4]],
+ [[140.3,41.2],[140.9,40.9],[141.4,41.4],[141.5,40.5],[142.0,39.6],[141.6,38.9],[141.5,38.3],[141.0,38.2],[140.9,37.0],[140.6,36.3],[140.85,35.7],[140.4,35.2],[139.9,34.9],[139.8,35.3],[139.9,35.6],[139.65,35.3],[139.2,35.2],[139.1,34.7],[138.8,35.0],[138.5,35.0],[138.2,34.6],[137.3,34.6],[137.0,34.7],[136.9,35.0],[136.6,34.7],[136.9,34.3],[136.3,33.9],[135.8,33.45],[135.1,33.9],[135.2,34.3],[135.4,34.65],[134.9,34.65],[134.0,34.6],[133.2,34.3],[132.5,34.3],[132.0,33.9],[131.3,34.0],[130.9,33.95],[131.0,34.4],[131.6,34.7],[132.6,35.4],[133.3,35.55],[134.2,35.55],[135.2,35.75],[135.9,35.7],[136.1,36.2],[136.7,36.9],[136.8,37.3],[137.3,37.5],[137.1,36.9],[137.4,36.8],[138.2,37.2],[138.9,37.9],[139.5,38.4],[139.9,39.2],[139.8,39.9],[140.0,40.3],[139.9,40.7]],
+ [[132.1,33.4],[132.7,33.9],[133.0,34.1],[133.7,34.3],[134.2,34.35],[134.6,34.2],[134.7,33.8],[134.3,33.6],[134.2,33.25],[133.6,33.5],[133.2,33.2],[132.95,32.75],[132.6,32.9],[132.4,33.3]],
+ [[130.9,33.9],[131.2,33.6],[131.7,33.6],[131.65,33.2],[132.0,32.8],[131.7,32.4],[131.45,31.6],[131.1,31.3],[131.0,31.0],[130.7,31.2],[130.55,31.6],[130.2,31.25],[130.25,31.9],[130.6,32.5],[130.6,32.8],[130.2,32.75],[129.85,32.65],[129.7,33.1],[129.55,33.35],[130.0,33.5],[130.4,33.6]],
+ [[127.62,26.08],[127.72,26.35],[127.9,26.68],[128.25,26.87],[128.33,26.76],[128.02,26.5],[127.88,26.2]],
+ [[138.2,38.0],[138.5,38.33],[138.58,38.1],[138.4,37.82]], [[134.67,34.2],[134.82,34.55],[135.02,34.6],[134.95,34.3]]
+];
+const TX=lon=>(lon-126.3)*28, TY=lat=>(46.2-lat)*30;   // map position
+function tripState(){ const t=rstore.get("trip",null); if (t) return t;
+  const n=Object.values(dayLog()).filter(d=>d.read).length;   // days already studied before the trip existed count as stops
+  return {n:Math.min(n, TRIP.length-1), last:"", lap:1}; }
+function tripAt(t){ return TRIP[Math.max(0,Math.min(TRIP.length-1,t.n))]; }
+function renderTripCard(){
+  const tx=$("tripCardTx"); if (!tx) return; const t=tripState(), c=tripAt(t), nx=TRIP[t.n+1], doneToday=t.last===today();
+  tx.innerHTML=`<b>Japan Trip · stop ${t.n+1} of ${TRIP.length}${t.lap>1?" · lap "+t.lap:""}</b>${c[4]} <span class="jp" lang="ja">${c[0]}</span> (${c[1]}) ${doneToday?"· ✔ arrived today!":(nx?`· Finish today's reading to go to <span class="jp" lang="ja">${nx[0]}</span> ${nx[4]}`:"· Finish today's reading to complete the trip! 🎉")}<div class="bar"><i style="width:${Math.round((t.n+1)/TRIP.length*100)}%"></i></div>`;
+}
+function tripSVG(t, from){
+  const land=TRIP_LAND.map(poly=>`<polygon points="${poly.map(p=>TX(p[0]).toFixed(1)+","+TY(p[1]).toFixed(1)).join(" ")}" fill="#BFE3B4" stroke="#7DB86E" stroke-width="2" stroke-linejoin="round"/>`).join("");
+  const pts=TRIP.map(c=>[TX(c[2]),TY(c[3])]);
+  const line=(a,b,col,dash)=>`<polyline points="${pts.slice(a,b+1).map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"${dash?' stroke-dasharray="2 8"':""}/>`;
+  const dots=TRIP.map((c,i)=>`<circle cx="${pts[i][0].toFixed(1)}" cy="${pts[i][1].toFixed(1)}" r="${i===t.n?9:6}" fill="${i<t.n?"#3A9D5D":i===t.n?"#F7B500":"#fff"}" stroke="${i<=t.n?"#fff":"#9FB3C6"}" stroke-width="2" data-i="${i}" style="cursor:pointer"/>`).join("");
+  const at=pts[from==null?t.n:from];
+  return `<svg viewBox="0 0 560 620" role="img" aria-label="Map of Japan with the trip route"><rect width="560" height="620" fill="#CFE8FB"/>${land}${line(t.n,TRIP.length-1,"#9FB3C6",true)}${line(0,t.n,"#3A9D5D")}${dots}
+    <g id="tripMacha" style="transform:translate(${at[0].toFixed(1)}px,${at[1].toFixed(1)}px)"><circle r="19" cy="-24" fill="#fff" stroke="#1F2A33" stroke-width="2"/><text y="-15" text-anchor="middle" font-size="26">🐼</text><path d="M-6,-6 L0,0 L6,-6" fill="#fff" stroke="#1F2A33" stroke-width="2"/></g></svg>`;
+}
+function tripShow(i){   // the big card on the right: stop i
+  const t=tripState(), c=TRIP[i], nx=TRIP[t.n+1], box=document.getElementById("tripNow"); if (!box) return;
+  box.innerHTML=`<div class="em">${c[4]}</div><div class="nm" lang="ja">${c[0]}<small>${c[1]}</small></div><p>${esc(c[5])}</p>${i===t.n?`<div class="next">${t.last===today()?"✔ You arrived today. See you tomorrow!":(nx?`Next stop: <span lang="ja" style="font-family:var(--model);font-size:18px">${nx[0]}</span> ${nx[4]} · finish today's reading to go there`:"Last stop! 🎉")}</div>`:`<div class="next">Stop ${i+1} · you were here</div>`}<div class="row" style="margin-top:8px"><button class="chip" id="tripSay" type="button">🔊 Say it</button></div>`;
+  document.getElementById("tripSay").onclick=()=>{ try{ speakNow(c[1],"ja-JP"); }catch(e){} };
+  document.querySelectorAll("#tripPass button").forEach(b=>b.classList.toggle("cur",+b.dataset.i===i));
+}
+function tripOpen(arrivedFrom){
+  const t=tripState(); try{ stopShadow(); }catch(e){}
+  $("tripp").innerHTML=`${arrivedFrom!=null?`<div class="tripwelcome">🎉 Welcome to <span lang="ja">${tripAt(t)[0]}</span>!</div>`:""}
+    <div class="tripmap" id="tripMap">${tripSVG(t, arrivedFrom)}</div>
+    <div class="tripside"><h2>🗾 Japan Trip <span style="font-size:15px;color:#6B7F74">${t.n+1} / ${TRIP.length}</span><button class="chip x" id="tripX" type="button" aria-label="Close">✕</button></h2>
+      <div class="tripnow" id="tripNow"></div>
+      <div style="font-weight:800;margin:4px 0 6px">My travel stamps</div>
+      <div class="pass" id="tripPass">${TRIP.map((c,i)=>`<button type="button" data-i="${i}" class="${i<=t.n?"":"todo"}"${i<=t.n?"":" disabled"}><span class="e">${i<=t.n?c[4]:"❔"}</span><span class="k" lang="ja">${i<=t.n?c[0]:"・・・"}</span></button>`).join("")}</div></div>`;
+  $("trip").hidden=false; tripShow(t.n);
+  $("tripX").onclick=()=>{ $("trip").hidden=true; };
+  $("tripPass").onclick=e=>{ const b=e.target.closest("button"); if (b && !b.disabled) tripShow(+b.dataset.i); };
+  $("tripMap").onclick=e=>{ const c=e.target.closest("circle[data-i]"); if (c && +c.dataset.i<=t.n) tripShow(+c.dataset.i); };
+  if (arrivedFrom!=null){ const c=tripAt(t), m=document.getElementById("tripMacha"); requestAnimationFrame(()=>requestAnimationFrame(()=>{ m.style.transform=`translate(${TX(c[2]).toFixed(1)}px,${TY(c[3]).toFixed(1)}px)`; }));
+    setTimeout(()=>{ try{ kqSnd.win(); kqConfetti(); }catch(e){} try{ speakNow(c[1],"ja-JP"); }catch(e){} },1500); }
+}
+// called when today's reading is finished: move one stop, once a day
+function tripAdvance(){
+  const t=tripState(); if (t.last===today()){ renderTripCard(); return false; }
+  const from=t.n; if (rstore.get("trip",null)===null && from===0 && !Object.values(dayLog()).some(d=>d.read)) { /* very first day: arrive at stop 1 */ }
+  if (t.n>=TRIP.length-1){ t.n=0; t.lap=(t.lap||1)+1; } else if (rstore.get("trip",null)!==null || from>0 || t.last!=="") t.n++;
+  t.last=today(); rstore.set("trip",t); renderTripCard(); setTimeout(()=>tripOpen(t.n===from?null:from), 2600); return true;
+}
+$("tripOpen").onclick=()=>tripOpen(null);
+renderTripCard();
+
 // ==================== Kanji Check: a daily 5-question quiz on kanji from the app's stories ====================
 // Spaced practice: a kanji answered right comes back later and later (1, 3, 7, 14, 30 days).
 // A kanji answered wrong, or "I don't know", comes back at the end of today's quiz and again tomorrow, until it is right several days in a row.
@@ -1384,7 +1525,7 @@ function storyStatus(p){
   return {read,qs,wrote,n,blue:sess.some(x=>x.blue||x.pass),date:last,st:n===3?"done":n>0?"part":"new"};
 }
 function renderCards(){
-  try{ renderKqCard(); }catch(e){}
+  try{ renderKqCard(); }catch(e){} try{ renderTripCard(); }catch(e){}
   const box=$("storyCards"); if (!box) return; const list=visiblePassages(); box.innerHTML=""; let done=0;
   for (const p of list){ const s=storyStatus(p); if (s.st==="done") done++;
     const b=document.createElement("button"); b.type="button"; b.className="scard"; b.dataset.st=s.st; b.dataset.id=p.id; if (rp && rp.id===p.id) b.setAttribute("aria-current","true");
@@ -1745,7 +1886,9 @@ $("doneRead").onclick=()=>{
   else { sessions.push({date:today(),sec,acc,taps:tapsThisRead,stumbles:stumbleWords,pass,blue:pass,reads:1}); rstore.set("sess."+rp.id,sessions); if (pass) giveStar(); }
   if (pass) cheer("Perfect! All blue! You read the whole story!");
   try{ rstore.set("heard."+rp.id, transcript.trim().slice(0,400)); }catch(e){}
+  const firstTrip=rstore.get("trip",null)===null && !Object.values(dayLog()).some(d=>d.read);
   markDay("read",{story:rp.title});
+  try{ if (firstTrip){ rstore.set("trip",{n:0,last:today(),lap:1}); renderTripCard(); setTimeout(()=>tripOpen(null),2600); } else tripAdvance(); }catch(e){}
   $("result").innerHTML=msg; $("result").hidden=false;
   $("qs").hidden=false; $("qsLock").hidden=true; renderQuestions(); setTimeout(()=>{ try{ $("qs").scrollIntoView({block:"start",behavior:"smooth"}); }catch(e){} }, 900);   /* fast track: questions right after ✅ Done, on any day */
   if (Math.min(sessions.length,3)>=3 || allAnswered()) openWrite();
