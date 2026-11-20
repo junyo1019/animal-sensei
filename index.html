@@ -1699,6 +1699,13 @@ $("dictIn").addEventListener("input", ()=>{
   else if (jp>0) $("micStatus").textContent="🎤 Listening in Japanese… keep going!";
 });
 $("doneRead").onclick=()=>{
+  if (Date.now()-rStart<1500) return;   // the Done button appears where Start was: ignore a double tap
+  if (!transcript.trim() && !parentOn){   // nothing was heard: not a reading, so nothing turns green or blue
+    reading=false; if (rec){ try{ rec.onend=null; rec.stop(); }catch(e){} } rec=null; $("dictBox").hidden=true;
+    $("startRead").hidden=false; $("doneRead").hidden=true; $("rbar").style.width="0";
+    document.querySelectorAll(".passage .w").forEach(e=>e.classList.remove("cursor")); rTok.forEach(o=>setSt(o,""));
+    $("micStatus").textContent=""; rb("I didn't hear any reading yet. Tap 🎤 Start reading and read the story out loud, then tap ✅ Done."); return;
+  }
   reading=false; const sec=Math.max(1,Math.round((Date.now()-rStart)/1000));
   if (rec){ try{ rec.onend=null; rec.stop(); }catch(e){} }
   $("startRead").hidden=false; $("doneRead").hidden=true;
@@ -1709,7 +1716,7 @@ $("doneRead").onclick=()=>{
     const r=judge(transcript);
     for (const o of rTok){ if (o.kanji) setSt(o, (o.i<=r.last && r.st[o.i]==="ok" && !stumbles.has(o.i)) ? "ok" : "miss"); else setSt(o, o.i<=r.last ? "ok" : ""); }
     acc = kt.length ? Math.round(100*kt.filter(o=>o.st==="ok").length/kt.length) : 100;
-  } else {   // no mic: the grown-up marked the stumbles
+  } else {   // no mic, Parent Check on: the grown-up marked the stumbles
     for (const o of rTok) setSt(o, o.kanji ? (stumbles.has(o.i)?"miss":"ok") : "ok");
   }
   rec=null; $("dictBox").hidden=true;
